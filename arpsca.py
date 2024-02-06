@@ -1,12 +1,11 @@
 import sys
 import socket
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTextBrowser, QLabel, QHBoxLayout
-from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtCore import QTimer, Qt
 import scapy.all as scapy
 import csv
 import requests
 from io import StringIO
-
 
 class MacVendorLookup:
     mac_vendor_data = None
@@ -33,7 +32,6 @@ class MacVendorLookup:
         oui = cleaned_mac[:6]
         return self.mac_vendor_data.get(oui, "Vendor not found")
 
-
 class ARPSniffer(QWidget):
     def __init__(self, oui_url):
         super().__init__()
@@ -45,26 +43,26 @@ class ARPSniffer(QWidget):
         self.setWindowTitle('ARP Sniffer')
 
         # Create description labels
-        ip_label = QLabel("IP Address")
-        mac_label = QLabel("MAC Address")
-        vendor_label = QLabel("Vendor")
-        hostname_label = QLabel("Hostname")  # Added hostname label
+        headers = ["IP Address", "MAC Address", "Vendor", "Hostname"]
+        self.table_widget = QTableWidget()
+        self.table_widget.setStyleSheet("background-color: black; color: green; font-size: 14pt;")
+        self.table_widget.setColumnCount(len(headers))
+        self.table_widget.setHorizontalHeaderLabels(headers)
 
-        # Create a QHBoxLayout to display labels horizontally
-        description_layout = QHBoxLayout()
-        description_layout.addWidget(ip_label)
-        description_layout.addWidget(mac_label)
-        description_layout.addWidget(vendor_label)
-        description_layout.addWidget(hostname_label)  # Added hostname label
+        # Set table to stretch horizontally
+        self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table_widget.verticalHeader().setVisible(False)
 
-        # Create QTextBrowser for displaying ARP results
-        self.result_text_arp = QTextBrowser(self)
-        self.result_text_arp.setStyleSheet("background-color: black; color: green; font-size: 14pt;")
+        # Set headers alignment to left-aligned
+        for i in range(len(headers)):
+            self.table_widget.horizontalHeaderItem(i).setTextAlignment(Qt.AlignLeft)
+
+        # Set columns to be resizable
+        self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
         # Create QVBoxLayout for the main layout
         layout = QVBoxLayout(self)
-        layout.addLayout(description_layout)  # Add description labels
-        layout.addWidget(self.result_text_arp)  # Add QTextBrowser
+        layout.addWidget(self.table_widget)  # Add QTableWidget
 
         # Timer to update ARP results every second
         self.timer_arp = QTimer(self)
@@ -78,10 +76,12 @@ class ARPSniffer(QWidget):
         # Perform ARP scan using scapy
         arp_results = self.scan_arp()
 
-        # Display results in the ARP tab
-        self.result_text_arp.clear()
-        for result in arp_results:
-            self.result_text_arp.append(result)
+        # Display results in the table
+        self.table_widget.setRowCount(len(arp_results))
+        for i, result in enumerate(arp_results):
+            for j, value in enumerate(result):
+                item = QTableWidgetItem(value)
+                self.table_widget.setItem(i, j, item)
 
     def scan_arp(self):
         # Use scapy to perform ARP scan
@@ -98,8 +98,7 @@ class ARPSniffer(QWidget):
                 # Retrieve hostname
                 hostname = self.get_hostname(ip_address)
 
-                arp_result = f"{ip_address:<15} {mac_address:<20} {vendor:<20} {hostname}"  # Updated to include hostname
-                arp_results.append(arp_result)
+                arp_results.append([ip_address, mac_address, vendor, hostname])
 
         return arp_results
 
@@ -118,4 +117,6 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     ex = ARPSniffer(oui_url)
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
+
+    sys.exit(app.exec())
