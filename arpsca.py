@@ -1,5 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTextBrowser
+import socket
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTextBrowser, QLabel, QHBoxLayout
 from PyQt5.QtCore import QTimer
 import scapy.all as scapy
 import csv
@@ -41,31 +42,46 @@ class ARPSniffer(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        self.result_text = QTextBrowser(self)
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.result_text)
-
         self.setWindowTitle('ARP Sniffer')
-        self.setGeometry(100, 100, 600, 400)  # Decreased window size
 
-        # Set stylesheet for QTextBrowser
-        self.result_text.setStyleSheet("background-color: black; color: green; font-size: 14pt;")  # Increased font size
+        # Create description labels
+        ip_label = QLabel("IP Address")
+        mac_label = QLabel("MAC Address")
+        vendor_label = QLabel("Vendor")
+        hostname_label = QLabel("Hostname")  # Added hostname label
+
+        # Create a QHBoxLayout to display labels horizontally
+        description_layout = QHBoxLayout()
+        description_layout.addWidget(ip_label)
+        description_layout.addWidget(mac_label)
+        description_layout.addWidget(vendor_label)
+        description_layout.addWidget(hostname_label)  # Added hostname label
+
+        # Create QTextBrowser for displaying ARP results
+        self.result_text_arp = QTextBrowser(self)
+        self.result_text_arp.setStyleSheet("background-color: black; color: green; font-size: 14pt;")
+
+        # Create QVBoxLayout for the main layout
+        layout = QVBoxLayout(self)
+        layout.addLayout(description_layout)  # Add description labels
+        layout.addWidget(self.result_text_arp)  # Add QTextBrowser
 
         # Timer to update ARP results every second
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_results)
-        self.timer.start(1000)
+        self.timer_arp = QTimer(self)
+        self.timer_arp.timeout.connect(self.update_results_arp)
+        self.timer_arp.start(1000)
 
+        # Show the window
         self.show()
 
-    def update_results(self):
+    def update_results_arp(self):
         # Perform ARP scan using scapy
         arp_results = self.scan_arp()
 
-        # Display results in the text browser
-        self.result_text.clear()
+        # Display results in the ARP tab
+        self.result_text_arp.clear()
         for result in arp_results:
-            self.result_text.append(result)
+            self.result_text_arp.append(result)
 
     def scan_arp(self):
         # Use scapy to perform ARP scan
@@ -79,10 +95,21 @@ class ARPSniffer(QWidget):
                 # Look up vendor information using MacVendorLookup class
                 vendor = self.mac_vendor_lookup.lookup_vendor(mac_address)
 
-                arp_result = f"IP {ip_address} is at {mac_address} (Vendor: {vendor})"
+                # Retrieve hostname
+                hostname = self.get_hostname(ip_address)
+
+                arp_result = f"{ip_address:<15} {mac_address:<20} {vendor:<20} {hostname}"  # Updated to include hostname
                 arp_results.append(arp_result)
 
         return arp_results
+
+    def get_hostname(self, ip_address):
+        try:
+            hostname = socket.gethostbyaddr(ip_address)[0]
+            return hostname
+        except Exception as e:
+            print("Error retrieving hostname:", e)
+            return "N/A"  # Return "N/A" if hostname retrieval fails
 
 
 if __name__ == '__main__':
@@ -92,4 +119,3 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = ARPSniffer(oui_url)
     sys.exit(app.exec_())
-
