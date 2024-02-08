@@ -1,7 +1,7 @@
-import sys
 import socket
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QHBoxLayout, QLabel, QLineEdit, QMessageBox
-from PyQt5.QtCore import QTimer, Qt, QSize
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QHBoxLayout, QLabel, QLineEdit, QTextEdit, QFileDialog
+from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QIcon
 import scapy.all as scapy
 import csv
@@ -9,6 +9,7 @@ import requests
 from io import StringIO
 import argparse
 import netifaces
+import matplotlib.pyplot as plt
 
 class MacVendorLookup:
     mac_vendor_data = None
@@ -43,6 +44,14 @@ class ARPSniffer(QWidget):
         self.mac_vendor_lookup = MacVendorLookup(oui_url)
         self.init_ui()
 
+        # Initialize ARP data
+        self.arp_data = []
+
+        # Initialize timer for ARP scan
+        self.timer_arp = QTimer(self)
+        self.timer_arp.timeout.connect(self.update_results_arp)
+        self.timer_arp.start(1000)
+
     def init_ui(self):
         self.setWindowTitle('ARP Sniffer')
         self.setMinimumSize(800, 600)
@@ -59,7 +68,6 @@ class ARPSniffer(QWidget):
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.setSortingEnabled(True)
 
-
         # Set headers alignment to left-aligned
         for i in range(len(headers)):
             self.table_widget.horizontalHeaderItem(i).setTextAlignment(Qt.AlignLeft)
@@ -74,6 +82,11 @@ class ARPSniffer(QWidget):
         self.filter_edit.setPlaceholderText("Filter by IP or MAC address...")
         self.filter_edit.textChanged.connect(self.filter_results)
 
+        # Create export button
+        self.export_button = QPushButton("Export")
+        self.export_button.setIcon(QIcon("export.png"))
+        self.export_button.clicked.connect(self.export_results)
+
         # Create status label
         self.status_label = QLabel("Ready")
 
@@ -81,6 +94,7 @@ class ARPSniffer(QWidget):
         toolbar_layout = QHBoxLayout()
         toolbar_layout.addWidget(self.refresh_button)
         toolbar_layout.addWidget(self.filter_edit)
+        toolbar_layout.addWidget(self.export_button)
         toolbar_layout.addStretch()
         toolbar_layout.addWidget(self.status_label)
 
@@ -88,11 +102,6 @@ class ARPSniffer(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(toolbar_layout)
         layout.addWidget(self.table_widget)
-
-        # Timer to update ARP results every second
-        self.timer_arp = QTimer(self)
-        self.timer_arp.timeout.connect(self.update_results_arp)
-        self.timer_arp.start(1000)
 
         # Show the window
         self.show()
@@ -103,12 +112,9 @@ class ARPSniffer(QWidget):
             arp_results = self.scan_arp()
 
             # Display results in the table
-            self.table_widget.setRowCount(len(arp_results))
-            for i, result in enumerate(arp_results):
-                for j, value in enumerate(result):
-                    item = QTableWidgetItem(value)
-                    self.table_widget.setItem(i, j, item)
+            self.display_results(arp_results)
 
+            # Update status label
             self.status_label.setText("ARP scan completed.")
         except Exception as e:
             self.status_label.setText(f"Error: {e}")
@@ -171,16 +177,38 @@ class ARPSniffer(QWidget):
                     else:
                         self.table_widget.setRowHidden(i, True)
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='ARP Sniffer')
-    parser.add_argument('--interface', required=True, help='Network interface name')
-    return parser.parse_args()
+    def display_results(self, arp_results):
+        # Clear previous results
+        self.table_widget.setRowCount(0)
+
+        # Display results in the table
+        for result in arp_results:
+            row_position = self.table_widget.rowCount()
+            self.table_widget.insertRow(row_position)
+            for col, data in enumerate(result):
+                self.table_widget.setItem(row_position, col, QTableWidgetItem(data))
+
+    def export_results(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save ARP Results", "", "CSV Files (*.csv)")
+        if file_path:
+            with open(file_path, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                # Write headers
+                headers = ["IP Address", "MAC Address", "Vendor", "Hostname"]
+                writer.writerow(headers)
+                # Write data
+                for row in range(self.table_widget.rowCount()):
+                    row_data = [self.table_widget.item(row, col).text() for col in range(self.table_widget.columnCount())]
+                    writer.writerow(row_data)
+
 
 if __name__ == '__main__':
     oui_url = "http://standards-oui.ieee.org/oui/oui.csv"
     MacVendorLookup.load_data(oui_url)
 
-    args = parse_args()
+    parser = argparse.ArgumentParser(description='ARP Sniffer')
+    parser.add_argument('--interface', required=True, help='Network interface name')
+    args = parser.parse_args()
     interface = args.interface
 
     app = QApplication(sys.argv)
