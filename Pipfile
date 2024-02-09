@@ -4,12 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pyqt5 = "*"
 pyqtchart = "*"
 scapy = "*"
 requests = "*"
 netifaces = "*"
 pyqtgraph = "*"
+pyqt6 = "*"
 
 [dev-packages]
 

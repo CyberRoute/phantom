@@ -1,15 +1,14 @@
 import socket
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QHBoxLayout, QLabel, QLineEdit, QTextEdit, QFileDialog
-from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QHBoxLayout, QLabel, QLineEdit, QFileDialog
+from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtGui import QIcon
 import scapy.all as scapy
 import csv
 import requests
 from io import StringIO
 import argparse
 import netifaces
-import matplotlib.pyplot as plt
 
 class MacVendorLookup:
     mac_vendor_data = None
@@ -64,13 +63,14 @@ class ARPSniffer(QWidget):
         self.table_widget.setHorizontalHeaderLabels(headers)
 
         # Set table to stretch horizontally
-        self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.setSortingEnabled(True)
 
         # Set headers alignment to left-aligned
         for i in range(len(headers)):
-            self.table_widget.horizontalHeaderItem(i).setTextAlignment(Qt.AlignLeft)
+            self.table_widget.horizontalHeaderItem(i).setTextAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Create refresh button
         self.refresh_button = QPushButton("Refresh")
