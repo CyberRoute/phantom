@@ -2,7 +2,8 @@ import socket
 import sys
 from PySide6.QtWidgets import QApplication, QDialog, QListWidgetItem
 from ui_arpscan import Ui_DeviceDiscovery
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtGui import QColor
+from PySide6.QtCore import Slot, Qt, QTimer
 import scapy.all as scapy
 
 
@@ -12,6 +13,9 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui = Ui_DeviceDiscovery()
         self._ui.setupUi(self)
         self._ui.scan.clicked.connect(self.start_arpscan)
+        self.timer_arp = QTimer(self)
+        self.timer_arp.timeout.connect(self.start_arpscan)
+        self.timer_arp.start(1000)
 
     def get_hostname(self, ip_address):
         try:
@@ -39,10 +43,12 @@ class DeviceDiscoveryDialog(QDialog):
 
                 # Retrieve hostname
                 hostname = self.get_hostname(ip_address)
-                label = f"{ip_address, mac_address, hostname}"
+                label = f"{ip_address} {mac_address} {hostname}"
                 items = self._ui.list.findItems(label, Qt.MatchExactly)
                 if not items:
                     item = QListWidgetItem(label)
+                    item.setBackground(QColor(Qt.black))
+                    item.setForeground(QColor(Qt.white))
                     self._ui.list.addItem(item)
 
                 arp_results.append([ip_address, mac_address, hostname, packet[1][scapy.ARP]])

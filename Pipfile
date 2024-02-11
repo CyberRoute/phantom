@@ -10,6 +10,7 @@ requests = "*"
 netifaces = "*"
 pyqtgraph = "*"
 pyqt6 = "*"
+pyside6 = "*"
 
 [dev-packages]
 
