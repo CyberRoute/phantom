@@ -69,9 +69,6 @@ class DeviceDiscoveryDialog(QDialog):
         self.hostname = None
         self.vendor = None
 
-
-        
-        
         self._ui.scan.setEnabled(True)  # Disable scan initially
         
         # Increase the size of the UI window
@@ -106,11 +103,27 @@ class DeviceDiscoveryDialog(QDialog):
         return network_address
     
     @Slot(QListWidgetItem)
-    def open_device_details(self):
+    def open_device_details(self, item):
+        # Get the text of the clicked item
+        selected_text = item.text()
 
-        # Open the detailed information window
-        self.device_details_window = DeviceDetailsWindow(self.ip_address, self.mac, self.hostname, self.vendor)
-        self.device_details_window.show()
+        # Split the selected text
+        parts = selected_text.split()
+
+        # Check if there are at least four parts
+        if len(parts) >= 4:
+            # Extract device information from the parts
+            self.ip_address = parts[0]
+            self.mac = parts[1]
+            self.hostname = parts[2]  # Join the hostname parts
+            self.vendor = " ".join(parts[3:])
+
+            # Open the detailed information window
+            self.device_details_window = DeviceDetailsWindow(self.ip_address, self.mac, self.hostname, self.vendor)
+            self.device_details_window.show()
+        else:
+            print("Invalid format: Not enough information")
+
     
     @Slot()
     def toggle_scan(self):
@@ -118,7 +131,7 @@ class DeviceDiscoveryDialog(QDialog):
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start(100)
 
-    @Slot()
+    Slot()
     def start_arpscan(self):
         ip_address = scapy.get_if_addr(self.interface)
         netmask = netifaces.ifaddresses(self.interface)[netifaces.AF_INET][0]['netmask']
@@ -135,8 +148,8 @@ class DeviceDiscoveryDialog(QDialog):
                 # Look up vendor information using MacVendorLookup class
                 self.vendor = self.mac_vendor_lookup.lookup_vendor(self.mac)
 
-                # Retrieve hostname
-                hostname = self.get_hostname(ip_address)
+                # Retrieve hostname inside the loop
+                self.hostname = self.get_hostname(self.ip_address)
                 label = f"{self.ip_address} {self.mac} {self.hostname} {self.vendor}"
                 items = self._ui.list.findItems(label, Qt.MatchExactly)
                 if not items:
@@ -147,7 +160,7 @@ class DeviceDiscoveryDialog(QDialog):
 
                 arp_results.append([self.ip_address, self.mac, self.hostname, self.vendor, packet[1][scapy.ARP]])
         print(arp_results)
-       
+
         return arp_results
     
     @Slot()
