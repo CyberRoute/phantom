@@ -1,10 +1,10 @@
 import csv
 from io import StringIO
 import sys
-from PySide6.QtWidgets import QApplication, QDialog, QListWidgetItem
+from PySide6.QtWidgets import QApplication, QDialog, QListWidgetItem, QLabel, QMainWindow, QVBoxLayout, QWidget
 import requests
 from ui_arpscan import Ui_DeviceDiscovery
-from PySide6.QtGui import QColor, QFont  # Import QFont
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtCore import Slot, Qt, QTimer
 import scapy.all as scapy
 import socket
@@ -35,6 +35,21 @@ class MacVendorLookup:
         cleaned_mac = mac_address.upper().replace(":", "").replace("-", "")
         oui = cleaned_mac[:6]
         return self.mac_vendor_data.get(oui, "Vendor not found")
+    
+class DeviceDetailsWindow(QMainWindow):
+    def __init__(self, ip_address, mac_address, hostname, vendor):
+        super().__init__()
+        self.setWindowTitle("Device Details")
+        
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel(f"IP Address: {ip_address}"))
+        layout.addWidget(QLabel(f"MAC Address: {mac_address}"))
+        layout.addWidget(QLabel(f"Hostname: {hostname}"))
+        layout.addWidget(QLabel(f"Vendor: {vendor}"))
+        
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
 
 class DeviceDiscoveryDialog(QDialog):
     def __init__(self, interface, oui_url, parent=None):
@@ -45,8 +60,17 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui = Ui_DeviceDiscovery()
         self._ui.setupUi(self)
         self._ui.scan.clicked.connect(self.toggle_scan)
-        self.timer_arp = QTimer(self)
-        self.timer_arp.timeout.connect(self.start_arpscan)
+        self.interface_label = QLabel(f"Interface: {self.interface}")
+        self.interface_label.setStyleSheet("color: green") 
+        self._ui.verticalLayout.addWidget(self.interface_label)
+        self._ui.list.itemClicked.connect(self.open_device_details)
+        self.ip_address = None
+        self.mac = None
+        self.hostname = None
+        self.vendor = None
+
+
+        
         
         self._ui.scan.setEnabled(True)  # Disable scan initially
         
@@ -57,7 +81,6 @@ class DeviceDiscoveryDialog(QDialog):
         font = QFont()
         font.setPointSize(12)  # Set the font size to 12
         self._ui.list.setFont(font)  # Apply the font to the QListWidget
-        self.timer_arp.start(100)
 
     def get_hostname(self, ip_address):
         try:
@@ -82,14 +105,18 @@ class DeviceDiscoveryDialog(QDialog):
 
         return network_address
     
+    @Slot(QListWidgetItem)
+    def open_device_details(self):
+
+        # Open the detailed information window
+        self.device_details_window = DeviceDetailsWindow(self.ip_address, self.mac, self.hostname, self.vendor)
+        self.device_details_window.show()
+    
     @Slot()
     def toggle_scan(self):
-        if self.timer_arp.isActive():
-            self.timer_arp.stop()  # Stop the timer if currently active
-            self._ui.scan.setText("Start Scan")  # Change button text
-        else:
-            self.timer_arp.start(100)  # Start the timer if not active
-            self._ui.scan.setText("Stop Scan")  # Change button text
+        self.timer_arp = QTimer(self)
+        self.timer_arp.timeout.connect(self.start_scan)
+        self.timer_arp.start(100)
 
     @Slot()
     def start_arpscan(self):
@@ -102,15 +129,15 @@ class DeviceDiscoveryDialog(QDialog):
         arp_packets = scapy.arping(network, verbose=0)[0]
         for packet in arp_packets:
             if packet[1].haslayer(scapy.ARP):
-                ip_address = packet[1][scapy.ARP].psrc
-                mac_address = packet[1][scapy.ARP].hwsrc
+                self.ip_address = packet[1][scapy.ARP].psrc
+                self.mac = packet[1][scapy.ARP].hwsrc
 
                 # Look up vendor information using MacVendorLookup class
-                vendor = self.mac_vendor_lookup.lookup_vendor(mac_address)
+                self.vendor = self.mac_vendor_lookup.lookup_vendor(self.mac)
 
                 # Retrieve hostname
                 hostname = self.get_hostname(ip_address)
-                label = f"{ip_address} {mac_address} {hostname} {vendor}"
+                label = f"{self.ip_address} {self.mac} {self.hostname} {self.vendor}"
                 items = self._ui.list.findItems(label, Qt.MatchExactly)
                 if not items:
                     item = QListWidgetItem(label)
@@ -118,7 +145,7 @@ class DeviceDiscoveryDialog(QDialog):
                     item.setForeground(QColor(Qt.white))
                     self._ui.list.addItem(item)
 
-                arp_results.append([ip_address, mac_address, hostname, vendor, packet[1][scapy.ARP]])
+                arp_results.append([self.ip_address, self.mac, self.hostname, self.vendor, packet[1][scapy.ARP]])
         print(arp_results)
        
         return arp_results
