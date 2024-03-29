@@ -81,6 +81,17 @@ class DeviceDiscoveryDialog(QDialog):
         font.setPointSize(12)  # Set the font size to 12
         self._ui.list.setFont(font)  # Apply the font to the QListWidget
         self._ui.listpkt.setFont(font)
+        
+         # Add descriptions for the two QListWidgetItems
+        description_item_1 = QListWidgetItem("Devices detected")
+        description_item_1.setBackground(QColor(Qt.darkGray))
+        description_item_1.setForeground(QColor(Qt.white))
+        description_item_2 = QListWidgetItem("ARP packets")
+        description_item_2.setBackground(QColor(Qt.darkGray))
+        description_item_2.setForeground(QColor(Qt.white))
+        self._ui.list.addItem(description_item_1)
+        self._ui.listpkt.addItem(description_item_2)
+
 
     def get_hostname(self, ip_address):
         try:
@@ -134,7 +145,7 @@ class DeviceDiscoveryDialog(QDialog):
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start(100)
 
-    Slot()
+    @Slot()
     def start_arpscan(self):
         ip_address = scapy.get_if_addr(self.interface)
         netmask = netifaces.ifaddresses(self.interface)[netifaces.AF_INET][0]['netmask']
@@ -161,8 +172,16 @@ class DeviceDiscoveryDialog(QDialog):
                     item.setForeground(QColor(Qt.white))
                     self._ui.list.addItem(item)
 
+                label = str(packet[1][scapy.ARP])
+                items = self._ui.listpkt.findItems(label, Qt.MatchExactly)
+                if not items:
+                    item = QListWidgetItem(label)
+                    item.setBackground(QColor(Qt.black))
+                    item.setForeground(QColor(Qt.white))
+                    self._ui.listpkt.addItem(item)
+
+
                 arp_results.append((self.ip_address, self.mac, self.hostname, self.vendor, packet[1][scapy.ARP]))
-                self._ui.listpkt.addItem(str(packet[1][scapy.ARP]))
         return arp_results
     
     @Slot()
