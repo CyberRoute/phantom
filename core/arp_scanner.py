@@ -9,6 +9,7 @@ import scapy.all as scapy
 import socket
 import netifaces
 import core.networking as net
+import core.sniffer as sniffer
 
 
 class MacVendorLookup:
@@ -144,6 +145,8 @@ class DeviceDiscoveryDialog(QDialog):
         self.timer_arp = QTimer(self)
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start(100)
+        myip = net.get_ip_address()
+        sniffer.start_packet_collector(self.interface, myip)
 
     @Slot()
     def start_arpscan(self):
