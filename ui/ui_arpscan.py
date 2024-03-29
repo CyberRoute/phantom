@@ -17,7 +17,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QGroupBox,
     QHBoxLayout, QListWidget, QListWidgetItem, QPushButton,
-    QSizePolicy, QVBoxLayout, QWidget)
+    QSizePolicy, QTabWidget, QVBoxLayout, QWidget)
 
 class Ui_DeviceDiscovery(object):
     def setupUi(self, DeviceDiscovery):
@@ -75,10 +75,24 @@ class Ui_DeviceDiscovery(object):
 
         self.verticalLayout.addLayout(self.horizontalLayout)
 
+        self.tabWidget = QTabWidget(DeviceDiscovery)
+        self.tabWidget.setObjectName(u"tabWidget")
+        self.tab_7 = QWidget()
+        self.tab_7.setObjectName(u"tab_7")
+        self.tabWidget.addTab(self.tab_7, "")
+        self.tab_8 = QWidget()
+        self.tab_8.setObjectName(u"tab_8")
+        self.tabWidget.addTab(self.tab_8, "")
+
+        self.verticalLayout.addWidget(self.tabWidget)
+
 
         self.retranslateUi(DeviceDiscovery)
         self.quit.clicked.connect(DeviceDiscovery.accept)
         self.clear.clicked.connect(self.list.clear)
+
+        self.tabWidget.setCurrentIndex(0)
+
 
         QMetaObject.connectSlotsByName(DeviceDiscovery)
     # setupUi
@@ -91,5 +105,7 @@ class Ui_DeviceDiscovery(object):
         self.scan.setText(QCoreApplication.translate("DeviceDiscovery", u"Scan", None))
         self.clear.setText(QCoreApplication.translate("DeviceDiscovery", u"Clear", None))
         self.quit.setText(QCoreApplication.translate("DeviceDiscovery", u"Quit", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_7), QCoreApplication.translate("DeviceDiscovery", u"Spoofer", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_8), QCoreApplication.translate("DeviceDiscovery", u"Sniffer", None))
     # retranslateUi
 

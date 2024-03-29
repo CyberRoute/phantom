@@ -74,6 +74,23 @@
      </item>
     </layout>
    </item>
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tab_7">
+      <attribute name="title">
+       <string>Spoofer</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_8">
+      <attribute name="title">
+       <string>Sniffer</string>
+      </attribute>
+     </widget>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>
