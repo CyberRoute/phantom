@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QApplication
 import argparse
 import sys
 from core.arp_scanner import DeviceDiscoveryDialog, MacVendorLookup
+from core.networking import enable_ip_forwarding
 
 
 if __name__ == "__main__":
@@ -10,6 +11,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     oui_url = "http://standards-oui.ieee.org/oui/oui.csv"
     MacVendorLookup.load_data(oui_url)
+    print(enable_ip_forwarding())
 
     app = QApplication(sys.argv)
 
