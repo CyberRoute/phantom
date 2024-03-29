@@ -1,6 +1,6 @@
 import csv
 from io import StringIO
-from PySide6.QtWidgets import QDialog, QListWidgetItem, QLabel, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDialog, QListWidgetItem, QLabel, QMainWindow, QVBoxLayout, QWidget, QTextEdit
 import requests
 from ui.ui_arpscan import Ui_DeviceDiscovery
 from PySide6.QtGui import QColor, QFont
@@ -80,6 +80,7 @@ class DeviceDiscoveryDialog(QDialog):
         font = QFont()
         font.setPointSize(12)  # Set the font size to 12
         self._ui.list.setFont(font)  # Apply the font to the QListWidget
+        self._ui.listpkt.setFont(font)
 
     def get_hostname(self, ip_address):
         try:
@@ -161,8 +162,7 @@ class DeviceDiscoveryDialog(QDialog):
                     self._ui.list.addItem(item)
 
                 arp_results.append((self.ip_address, self.mac, self.hostname, self.vendor, packet[1][scapy.ARP]))
-        print(arp_results)
-
+                self._ui.listpkt.addItem(str(packet[1][scapy.ARP]))
         return arp_results
     
     @Slot()

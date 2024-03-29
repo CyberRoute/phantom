@@ -23,13 +23,18 @@ class Ui_DeviceDiscovery(object):
     def setupUi(self, DeviceDiscovery):
         if not DeviceDiscovery.objectName():
             DeviceDiscovery.setObjectName(u"DeviceDiscovery")
-        DeviceDiscovery.resize(585, 345)
+        DeviceDiscovery.resize(658, 694)
         self.verticalLayout = QVBoxLayout(DeviceDiscovery)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.list = QListWidget(DeviceDiscovery)
         self.list.setObjectName(u"list")
 
         self.verticalLayout.addWidget(self.list)
+
+        self.listpkt = QListWidget(DeviceDiscovery)
+        self.listpkt.setObjectName(u"listpkt")
+
+        self.verticalLayout.addWidget(self.listpkt)
 
         self.groupBox = QGroupBox(DeviceDiscovery)
         self.groupBox.setObjectName(u"groupBox")
