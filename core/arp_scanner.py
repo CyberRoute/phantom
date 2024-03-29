@@ -8,6 +8,7 @@ from PySide6.QtCore import Slot, Qt, QTimer
 import scapy.all as scapy
 import socket
 import netifaces
+import core.networking as net
 
 
 class MacVendorLookup:
@@ -59,6 +60,8 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui = Ui_DeviceDiscovery()
         self._ui.setupUi(self)
         self._ui.scan.clicked.connect(self.toggle_scan)
+        net.enable_ip_forwarding()
+        self._ui.quit.clicked.connect(self.quit_application)
         self.interface_label = QLabel(f"Interface: {self.interface}")
         self.interface_label.setStyleSheet("color: green") 
         self._ui.verticalLayout.addWidget(self.interface_label)
@@ -157,7 +160,7 @@ class DeviceDiscoveryDialog(QDialog):
                     item.setForeground(QColor(Qt.white))
                     self._ui.list.addItem(item)
 
-                arp_results.append([self.ip_address, self.mac, self.hostname, self.vendor, packet[1][scapy.ARP]])
+                arp_results.append((self.ip_address, self.mac, self.hostname, self.vendor, packet[1][scapy.ARP]))
         print(arp_results)
 
         return arp_results
@@ -170,3 +173,11 @@ class DeviceDiscoveryDialog(QDialog):
     @Slot()
     def scan_finished(self):
         self._ui.scan.setEnabled(True)
+
+    def quit_application(self):
+        """
+        Slot function to be called when the Quit button is clicked.
+        Disable IP forwarding and close the application.
+        """
+        net.disable_ip_forwarding()
+        self.close()
