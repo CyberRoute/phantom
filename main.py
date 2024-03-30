@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QApplication
 import argparse
 import sys
-from core.arp_scanner import DeviceDiscoveryDialog, MacVendorLookup
+from core.arp_scanner import DeviceDiscoveryDialog
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='ARP Sniffer')

@@ -8,7 +8,7 @@ import socket
 import netifaces
 import core.networking as net
 import core.sniffer as sniffer
-import vendor as vendor
+import core.vendor as vendor
 
     
 class DeviceDetailsWindow(QMainWindow):
@@ -57,7 +57,7 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui.list.setFont(font)  # Apply the font to the QListWidget
         self._ui.listpkt.setFont(font)
         
-         # Add descriptions for the two QListWidgetItems
+        # Add descriptions for the two QListWidgetItems
         description_item_1 = QListWidgetItem("Devices detected")
         description_item_1.setBackground(QColor(Qt.darkGray))
         description_item_1.setForeground(QColor(Qt.white))
@@ -67,30 +67,6 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui.list.addItem(description_item_1)
         self._ui.listpkt.addItem(description_item_2)
 
-
-    def get_hostname(self, ip_address):
-        try:
-            hostname = socket.gethostbyaddr(ip_address)[0]
-            return hostname
-        except Exception as e:
-            return "N/A"  # Return "N/A" if hostname retrieval fails
-        
-    def calculate_network_cidr(self, ip_address, subnet_mask):
-        # Split the IP address and subnet mask into octets
-        ip_octets = [int(octet) for octet in ip_address.split('.')]
-        subnet_octets = [int(octet) for octet in subnet_mask.split('.')]
-
-        # Perform bitwise AND operation on corresponding octets
-        network_octets = [ip_octets[i] & subnet_octets[i] for i in range(4)]
-
-        # Calculate the number of set bits in the subnet mask
-        prefix_length = sum(bin(octet).count('1') for octet in subnet_octets)
-
-        # Format the network address in CIDR notation
-        network_address = '.'.join(map(str, network_octets)) + '/' + str(prefix_length)
-
-        return network_address
-    
     @Slot(QListWidgetItem)
     def open_device_details(self, item):
         # Get the text of the clicked item
@@ -113,7 +89,6 @@ class DeviceDiscoveryDialog(QDialog):
         else:
             print("Invalid format: Not enough information")
 
-    
     @Slot()
     def toggle_scan(self):
         self.timer_arp = QTimer(self)
@@ -123,52 +98,20 @@ class DeviceDiscoveryDialog(QDialog):
         sniffer.start_packet_collector(self.interface, myip)
 
     @Slot()
-    def start_arpscan(self):
-        ip_address = scapy.get_if_addr(self.interface)
-        netmask = netifaces.ifaddresses(self.interface)[netifaces.AF_INET][0]['netmask']
-        network = self.calculate_network_cidr(ip_address=ip_address, subnet_mask=netmask)
-        # Use scapy to perform ARP scan
-        self._ui.scan.setEnabled(False)
-        arp_results = []
-        arp_packets = scapy.arping(network, verbose=0)[0]
-        for packet in arp_packets:
-            if packet[1].haslayer(scapy.ARP):
-                self.ip_address = packet[1][scapy.ARP].psrc
-                self.mac = packet[1][scapy.ARP].hwsrc
-
-                # Look up vendor information using MacVendorLookup class
-                self.vendor = self.mac_vendor_lookup.lookup_vendor(self.mac)
-
-                # Retrieve hostname inside the loop
-                self.hostname = self.get_hostname(self.ip_address)
-                label = f"{self.ip_address} {self.mac} {self.hostname} {self.vendor}"
-                items = self._ui.list.findItems(label, Qt.MatchExactly)
-                if not items:
-                    item = QListWidgetItem(label)
-                    item.setBackground(QColor(Qt.black))
-                    item.setForeground(QColor(Qt.white))
-                    self._ui.list.addItem(item)
-
-                label = str(packet[1][scapy.ARP])
-                items = self._ui.listpkt.findItems(label, Qt.MatchExactly)
-                if not items:
-                    item = QListWidgetItem(label)
-                    item.setBackground(QColor(Qt.black))
-                    item.setForeground(QColor(Qt.white))
-                    self._ui.listpkt.addItem(item)
-
-
-                arp_results.append((self.ip_address, self.mac, self.hostname, self.vendor, packet[1][scapy.ARP]))
-        return arp_results
-    
-    @Slot()
     def start_scan(self):
-        self.start_arpscan()
+        arp_results = ARPScanner.run_arp_scan(self.interface, self._ui, self.mac_vendor_lookup)
+        self.update_ui_with_arp_results(arp_results)
         self._ui.scan.setEnabled(False)
 
-    @Slot()
-    def scan_finished(self):
-        self._ui.scan.setEnabled(True)
+    @Slot(list)
+    def update_ui_with_arp_results(self, arp_results):
+        for result in arp_results:
+            ip_address, mac, hostname, vendor, _ = result
+            label = f"{ip_address} {mac} {hostname} {vendor}"
+            item = QListWidgetItem(label)
+            item.setBackground(QColor(Qt.black))
+            item.setForeground(QColor(Qt.white))
+            self._ui.list.addItem(item)
 
     def quit_application(self):
         """
@@ -177,3 +120,60 @@ class DeviceDiscoveryDialog(QDialog):
         """
         net.disable_ip_forwarding()
         self.close()
+
+class ARPScanner:
+    @staticmethod
+    def calculate_network_cidr(ip_address, subnet_mask):
+        # Split the IP address and subnet mask into octets
+        ip_octets = [int(octet) for octet in ip_address.split('.')]
+        subnet_octets = [int(octet) for octet in subnet_mask.split('.')]
+
+        # Perform bitwise AND operation on corresponding octets
+        network_octets = [ip_octets[i] & subnet_octets[i] for i in range(4)]
+
+        # Calculate the number of set bits in the subnet mask
+        prefix_length = sum(bin(octet).count('1') for octet in subnet_octets)
+
+        # Format the network address in CIDR notation
+        network_address = '.'.join(map(str, network_octets)) + '/' + str(prefix_length)
+
+        return network_address
+
+    @staticmethod
+    def get_hostname(ip_address):
+        try:
+            hostname = socket.gethostbyaddr(ip_address)[0]
+            return hostname
+        except Exception as e:
+            return "N/A"  # Return "N/A" if hostname retrieval fails
+
+    @staticmethod
+    def run_arp_scan(interface, ui, mac_vendor_lookup):
+        # Function to perform ARP scan
+        ip_address = scapy.get_if_addr(interface)
+        netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['netmask']
+        network = ARPScanner.calculate_network_cidr(ip_address=ip_address, subnet_mask=netmask)
+        arp_results = []
+        arp_packets = scapy.arping(network, verbose=0)[0]
+        for packet in arp_packets:
+            if packet[1].haslayer(scapy.ARP):
+                ip_address = packet[1][scapy.ARP].psrc
+                mac = packet[1][scapy.ARP].hwsrc
+                vendor = mac_vendor_lookup.lookup_vendor(mac)
+                hostname = ARPScanner.get_hostname(ip_address)
+                label = f"{ip_address} {mac} {hostname} {vendor}"
+                items = ui.list.findItems(label, Qt.MatchExactly)
+                if not items:
+                    item = QListWidgetItem(label)
+                    item.setBackground(QColor(Qt.black))
+                    item.setForeground(QColor(Qt.white))
+                    ui.list.addItem(item)
+                label = str(packet[1][scapy.ARP])
+                items = ui.listpkt.findItems(label, Qt.MatchExactly)
+                if not items:
+                    item = QListWidgetItem(label)
+                    item.setBackground(QColor(Qt.black))
+                    item.setForeground(QColor(Qt.white))
+                    ui.listpkt.addItem(item)
+                arp_results.append((ip_address, mac, hostname, vendor, packet[1][scapy.ARP]))
+        return arp_results
