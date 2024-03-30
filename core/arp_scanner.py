@@ -1,7 +1,8 @@
-from PySide6.QtWidgets import QDialog, QListWidgetItem, QLabel, QMainWindow, QVBoxLayout, QWidget
+import time
+from PySide6.QtWidgets import *
 from ui.ui_arpscan import Ui_DeviceDiscovery
-from PySide6.QtGui import QColor, QFont
-from PySide6.QtCore import Slot, Qt, QTimer, QThreadPool
+from PySide6.QtGui import *
+from PySide6.QtCore import *
 import scapy.all as scapy
 import socket
 import netifaces
@@ -25,6 +26,25 @@ class DeviceDetailsWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+class Worker(QRunnable):
+    """
+    Worker thread
+    """
+
+    def __init__(self, interface):
+        super().__init__()
+        self.interface = interface
+
+    @Slot()
+    def run(self):
+        """
+        Your code goes in this function
+        """
+        print("Sniffer Thread start")
+        myip = net.get_ip_address()
+        sniffer.start_packet_collector(self.interface, myip)
+        print("Sniffer Thread complete")
+
 class DeviceDiscoveryDialog(QDialog):
     def __init__(self, interface, oui_url, parent=None):
         super().__init__(parent)
@@ -44,6 +64,9 @@ class DeviceDiscoveryDialog(QDialog):
         self.mac = None
         self.hostname = None
         self.vendor = None
+
+        self.threadpool = QThreadPool()
+        print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
 
         self._ui.scan.setEnabled(True)  # Disable scan initially
         
@@ -92,16 +115,12 @@ class DeviceDiscoveryDialog(QDialog):
     def toggle_scan(self):
         # Start the ARP scanner using QTimer for periodic execution
         self.timer_arp = QTimer(self)
+        self.timer_arp.setInterval(100)
         self.timer_arp.timeout.connect(self.start_scan)
-        self.timer_arp.start(100)
-        
+        self.timer_arp.start()
         # Start the sniffer in a separate thread using QThreadPool
-        pool = QThreadPool.globalInstance()
-        pool.start(self.start_sniffer)
-
-    def start_sniffer(self):
-        myip = net.get_ip_address()
-        sniffer.start_packet_collector(self.interface, myip)
+        worker = Worker(self.interface)  # Pass self.interface to the Worker constructor
+        self.threadpool.start(worker)
 
     @Slot()
     def start_scan(self):
