@@ -1,8 +1,7 @@
-
 from PySide6.QtWidgets import QDialog, QListWidgetItem, QLabel, QMainWindow, QVBoxLayout, QWidget
 from ui.ui_arpscan import Ui_DeviceDiscovery
 from PySide6.QtGui import QColor, QFont
-from PySide6.QtCore import Slot, Qt, QTimer
+from PySide6.QtCore import Slot, Qt, QTimer, QThreadPool
 import scapy.all as scapy
 import socket
 import netifaces
@@ -91,9 +90,16 @@ class DeviceDiscoveryDialog(QDialog):
 
     @Slot()
     def toggle_scan(self):
+        # Start the ARP scanner using QTimer for periodic execution
         self.timer_arp = QTimer(self)
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start(100)
+        
+        # Start the sniffer in a separate thread using QThreadPool
+        pool = QThreadPool.globalInstance()
+        pool.start(self.start_sniffer)
+
+    def start_sniffer(self):
         myip = net.get_ip_address()
         sniffer.start_packet_collector(self.interface, myip)
 
