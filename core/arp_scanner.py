@@ -113,30 +113,19 @@ class DeviceDiscoveryDialog(QDialog):
 
     @Slot()
     def toggle_scan(self):
-        # Start the ARP scanner using QTimer for periodic execution
+        self._ui.scan.setEnabled(False)
         self.timer_arp = QTimer(self)
-        self.timer_arp.setInterval(100)
+        self.timer_arp.setInterval(1000)  # Set interval to 20 seconds
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start()
+        
         # Start the sniffer in a separate thread using QThreadPool
         worker = Worker(self.interface)  # Pass self.interface to the Worker constructor
         self.threadpool.start(worker)
 
     @Slot()
     def start_scan(self):
-        arp_results = ARPScanner.run_arp_scan(self.interface, self._ui, self.mac_vendor_lookup)
-        self.update_ui_with_arp_results(arp_results)
-        self._ui.scan.setEnabled(False)
-
-    @Slot(list)
-    def update_ui_with_arp_results(self, arp_results):
-        for result in arp_results:
-            ip_address, mac, hostname, vendor, _ = result
-            label = f"{ip_address} {mac} {hostname} {vendor}"
-            item = QListWidgetItem(label)
-            item.setBackground(QColor(Qt.black))
-            item.setForeground(QColor(Qt.white))
-            self._ui.list.addItem(item)
+        ARPScanner.run_arp_scan(self.interface, self._ui, self.mac_vendor_lookup)
 
     def quit_application(self):
         """
