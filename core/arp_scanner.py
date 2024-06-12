@@ -10,18 +10,18 @@ import core.networking as net
 import core.sniffer as sniffer
 import core.vendor as vendor
 
-    
+
 class DeviceDetailsWindow(QMainWindow):
     def __init__(self, ip_address, mac_address, hostname, vendor):
         super().__init__()
         self.setWindowTitle("Device Details")
-        
+
         layout = QVBoxLayout()
         layout.addWidget(QLabel(f"IP Address: {ip_address}"))
         layout.addWidget(QLabel(f"MAC Address: {mac_address}"))
         layout.addWidget(QLabel(f"Hostname: {hostname}"))
         layout.addWidget(QLabel(f"Vendor: {vendor}"))
-        
+
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
@@ -42,7 +42,9 @@ class Worker(QRunnable):
         """
         print("Sniffer Thread start")
         myip = net.get_ip_address()
-        sniffer.start_packet_collector(self.interface, myip)
+        print(self.interface)
+        snif = sniffer.PacketCollector(self.interface, myip)
+        snif.start_capture()
         print("Sniffer Thread complete")
 
 class DeviceDiscoveryDialog(QDialog):
@@ -57,7 +59,7 @@ class DeviceDiscoveryDialog(QDialog):
         net.enable_ip_forwarding()
         self._ui.quit.clicked.connect(self.quit_application)
         self.interface_label = QLabel(f"Interface: {self.interface}")
-        self.interface_label.setStyleSheet("color: green") 
+        self.interface_label.setStyleSheet("color: green")
         self._ui.verticalLayout.addWidget(self.interface_label)
         self._ui.list.itemClicked.connect(self.open_device_details)
         self.ip_address = None
@@ -69,16 +71,16 @@ class DeviceDiscoveryDialog(QDialog):
         print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
 
         self._ui.scan.setEnabled(True)  # Disable scan initially
-        
+
         # Increase the size of the UI window
         self.resize(800, 600)
-        
+
         # Increase the font size of QListWidget items
         font = QFont()
         font.setPointSize(12)  # Set the font size to 12
         self._ui.list.setFont(font)  # Apply the font to the QListWidget
         self._ui.listpkt.setFont(font)
-        
+
         # Add descriptions for the two QListWidgetItems
         description_item_1 = QListWidgetItem("Devices detected")
         description_item_1.setBackground(QColor(Qt.darkGray))
@@ -118,7 +120,7 @@ class DeviceDiscoveryDialog(QDialog):
         self.timer_arp.setInterval(1000)  # Set interval to 20 seconds
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start()
-        
+
         # Start the sniffer in a separate thread using QThreadPool
         worker = Worker(self.interface)  # Pass self.interface to the Worker constructor
         self.threadpool.start(worker)

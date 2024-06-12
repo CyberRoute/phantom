@@ -1,13 +1,24 @@
-
 import scapy.all as sc
+from PySide6.QtCore import QObject, Signal
 
-def start_packet_collector(iface, ip_addr):
+class PacketCollector(QObject):
+    packetCaptured = Signal(str)
 
-    # Continuously sniff packets for 30 second intervals
-    cap = sc.sniff(
-        iface=iface,
-        stop_filter=lambda _: not True,
-        filter=f'(not arp and host not {ip_addr})', # Avoid capturing packets to/from the host itself, except ARP, which we need for discovery -- this is for performance improvement
-        timeout=30
-    )
-    cap.nsummary()
+    def __init__(self, iface, ip_addr, parent=None):
+        super().__init__(parent)
+        self.iface = iface
+        self.ip_addr = ip_addr
+
+    def start_capture(self):
+        sc.sniff(
+            iface=self.iface,
+            stop_filter=lambda _: not True,
+            filter=f'(host not {self.ip_addr})',
+            prn=self.process_packet,
+            store=False
+        )
+
+    def process_packet(self, packet):
+        packet_summary = str(packet.summary())
+        print(packet_summary)
+        self.packetCaptured.emit(packet_summary)
