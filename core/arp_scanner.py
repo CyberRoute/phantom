@@ -1,4 +1,3 @@
-import time
 from PySide6.QtWidgets import *
 from ui.ui_arpscan import Ui_DeviceDiscovery
 from PySide6.QtGui import *
@@ -9,6 +8,7 @@ import netifaces
 import core.networking as net
 import core.sniffer as sniffer
 import core.vendor as vendor
+from core.platform import get_os
 
 
 class DeviceDetailsWindow(QMainWindow):
@@ -59,7 +59,12 @@ class DeviceDiscoveryDialog(QDialog):
         net.enable_ip_forwarding()
         self._ui.quit.clicked.connect(self.quit_application)
         self.interface_label = QLabel(f"Interface: {self.interface}")
-        self.interface_label.setStyleSheet("color: green")
+        self.interface_label.setStyleSheet("color: black")
+        self.os_label = QLabel(f"OS: {get_os()}")
+        self.os_label.setStyleSheet("color: black")
+
+        self._ui.verticalLayout.addWidget(self.os_label)
+
         self._ui.verticalLayout.addWidget(self.interface_label)
         self._ui.list.itemClicked.connect(self.open_device_details)
         self.ip_address = None
@@ -167,8 +172,12 @@ class ARPScanner:
     def run_arp_scan(interface, ui, mac_vendor_lookup):
         # Function to perform ARP scan
         ip_address = scapy.get_if_addr(interface)
-        netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['netmask']
-        network = ARPScanner.calculate_network_cidr(ip_address=ip_address, subnet_mask=netmask)
+        try:
+            netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['netmask']
+
+            network = ARPScanner.calculate_network_cidr(ip_address=ip_address, subnet_mask=netmask)
+        except KeyError:
+            return "network recalculation"
         arp_results = []
         arp_packets = scapy.arping(network, verbose=0)[0]
         for packet in arp_packets:

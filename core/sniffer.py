@@ -13,7 +13,7 @@ class PacketCollector(QObject):
         sc.sniff(
             iface=self.iface,
             stop_filter=lambda _: not True,
-            filter=f'(host not {self.ip_addr})',
+            filter=f'(not arp and host not {self.ip_addr})',
             prn=self.process_packet,
             store=False
         )
