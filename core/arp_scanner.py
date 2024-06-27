@@ -55,6 +55,8 @@ class DeviceDiscoveryDialog(QDialog):
 
         self._ui = Ui_DeviceDiscovery()
         self._ui.setupUi(self)
+        self.setWindowIcon(QIcon("images/phantom_logo.png"))
+
         self._ui.scan.clicked.connect(self.toggle_scan)
         net.enable_ip_forwarding()
         self._ui.quit.clicked.connect(self.quit_application)
