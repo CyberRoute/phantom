@@ -44,6 +44,7 @@ class Worker(QRunnable):
         myip = net.get_ip_address()
         print(self.interface)
         self.packet_collector.start_capture()
+        self.packet_collector.stop_capture()
         print("Sniffer Thread complete")
 
 class DeviceDiscoveryDialog(QDialog):
@@ -171,6 +172,7 @@ class DeviceDiscoveryDialog(QDialog):
         Disable IP forwarding and close the application.
         """
         net.disable_ip_forwarding()
+        self.packet_collector.stop_capture()
         self.close()
 
 class ARPScanner:
