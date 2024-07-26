@@ -10,6 +10,9 @@ import core.sniffer as sniffer
 import core.vendor as vendor
 from core.platform import get_os
 
+#client = OpenAI()
+
+# Initialize the OpenAI API key
 
 class DeviceDetailsWindow(QMainWindow):
     def __init__(self, ip_address, mac_address, hostname, vendor):
@@ -203,4 +206,11 @@ class ARPScanner:
                     item.setForeground(QColor(Qt.white))
                     ui.listpkt.addItem(item)
                 arp_results.append((ip_address, mac, hostname, vendor, packet[1][scapy.ARP]))
+                # Use OpenAI API to analyze packet
+                #packet_analysis = ARPScanner().analyze_packet_with_openai(label)
+                #analysis_item = QListWidgetItem(packet_analysis)
+                #analysis_item.setBackground(QColor(Qt.blue))
+                #analysis_item.setForeground(QColor(Qt.white))
+                #ui.listpkt.addItem(analysis_item)
+
         return arp_results
