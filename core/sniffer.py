@@ -1,8 +1,10 @@
+from PyQt6.QtCore import QObject, pyqtSignal as Signal
 import scapy.all as sc
-from PySide6.QtCore import QObject, Signal
 from openai import OpenAI
 
 client = OpenAI(api_key='')  # Import OpenAI
+
+
 
 class PacketCollector(QObject):
     packetCaptured = Signal(str)
@@ -17,14 +19,12 @@ class PacketCollector(QObject):
             iface=self.iface,
             stop_filter=lambda _: not True,
             filter=f'(not arp and host not {self.ip_addr})',
-            #filter="not arp",
             prn=self.process_packet,
             store=False
         )
 
     def process_packet(self, packet):
         packet_summary = str(packet.summary())
-        print(packet_summary)
         self.packetCaptured.emit(packet_summary)
 
     @staticmethod

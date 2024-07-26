@@ -10,10 +10,6 @@ import core.sniffer as sniffer
 import core.vendor as vendor
 from core.platform import get_os
 
-#client = OpenAI()
-
-# Initialize the OpenAI API key
-
 class DeviceDetailsWindow(QMainWindow):
     def __init__(self, ip_address, mac_address, hostname, vendor):
         super().__init__()
@@ -34,9 +30,10 @@ class Worker(QRunnable):
     Worker thread
     """
 
-    def __init__(self, interface):
+    def __init__(self, interface, packet_collector):
         super().__init__()
         self.interface = interface
+        self.packet_collector = packet_collector
 
     @Slot()
     def run(self):
@@ -46,8 +43,7 @@ class Worker(QRunnable):
         print("Sniffer Thread start")
         myip = net.get_ip_address()
         print(self.interface)
-        snif = sniffer.PacketCollector(self.interface, myip)
-        snif.start_capture()
+        self.packet_collector.start_capture()
         print("Sniffer Thread complete")
 
 class DeviceDiscoveryDialog(QDialog):
@@ -56,7 +52,7 @@ class DeviceDiscoveryDialog(QDialog):
         self.interface = interface
         self.mac_vendor_lookup = vendor.MacVendorLookup(oui_url)
 
-        self._ui = Ui_DeviceDiscovery()
+        self._ui = Ui_DeviceDiscovery()  # Assuming Ui_DeviceDiscovery is defined elsewhere
         self._ui.setupUi(self)
         self.setWindowIcon(QIcon("images/phantom_logo.png"))
 
@@ -65,11 +61,10 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui.quit.clicked.connect(self.quit_application)
         self.interface_label = QLabel(f"Interface: {self.interface}")
         self.interface_label.setStyleSheet("color: black")
-        self.os_label = QLabel(f"OS: {get_os()}")
+        self.os_label = QLabel(f"OS: {get_os()}")  # Assuming get_os is defined elsewhere
         self.os_label.setStyleSheet("color: black")
 
         self._ui.verticalLayout.addWidget(self.os_label)
-
         self._ui.verticalLayout.addWidget(self.interface_label)
         self._ui.list.itemClicked.connect(self.open_device_details)
         self.ip_address = None
@@ -100,6 +95,37 @@ class DeviceDiscoveryDialog(QDialog):
         description_item_2.setForeground(QColor(Qt.white))
         self._ui.list.addItem(description_item_1)
         self._ui.listpkt.addItem(description_item_2)
+
+        # Add QListWidget to tab_7
+        self.add_list_widget_to_tab_7()
+
+        # Initialize PacketCollector
+        self.packet_collector = sniffer.PacketCollector(self.interface, net.get_ip_address())
+        self.packet_collector.packetCaptured.connect(self.add_packet_to_list)
+
+    def add_list_widget_to_tab_7(self):
+        self.list_widget_tab7 = QListWidget()
+        tab7_layout = QVBoxLayout(self._ui.tab_7)
+        tab7_layout.addWidget(self.list_widget_tab7)
+
+        # Adding data to list_widget_tab7
+        description_item_1 = QListWidgetItem("Devices detected in tab 7")
+        description_item_1.setBackground(QColor(Qt.darkGray))
+        description_item_1.setForeground(QColor(Qt.white))
+
+        description_item_2 = QListWidgetItem("ARP packets in tab 7")
+        description_item_2.setBackground(QColor(Qt.darkGray))
+        description_item_2.setForeground(QColor(Qt.white))
+
+        self.list_widget_tab7.addItem(description_item_1)
+        self.list_widget_tab7.addItem(description_item_2)
+
+    def add_packet_to_list(self, packet_summary):
+        packet_item = QListWidgetItem(packet_summary)
+        packet_item.setBackground(QColor(Qt.darkGray))
+        packet_item.setForeground(QColor(Qt.white))
+        print(packet_summary)
+        self.list_widget_tab7.addItem(packet_item)
 
     @Slot(QListWidgetItem)
     def open_device_details(self, item):
@@ -132,7 +158,7 @@ class DeviceDiscoveryDialog(QDialog):
         self.timer_arp.start()
 
         # Start the sniffer in a separate thread using QThreadPool
-        worker = Worker(self.interface)  # Pass self.interface to the Worker constructor
+        worker = Worker(self.interface, self.packet_collector)  # Pass self.interface and packet_collector to the Worker constructor
         self.threadpool.start(worker)
 
     @Slot()
@@ -179,7 +205,6 @@ class ARPScanner:
         ip_address = scapy.get_if_addr(interface)
         try:
             netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['netmask']
-
             network = ARPScanner.calculate_network_cidr(ip_address=ip_address, subnet_mask=netmask)
         except KeyError:
             return "network recalculation"
