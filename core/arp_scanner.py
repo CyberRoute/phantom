@@ -176,14 +176,16 @@ class DeviceDiscoveryDialog(QDialog):
     @Slot()
     def toggle_scan(self):
         self._ui.scan.setEnabled(False)
-        self.timer_arp = QTimer(self)
-        self.timer_arp.setInterval(1000)  # Set interval to 1 second
-        self.timer_arp.timeout.connect(self.start_scan)
-        self.timer_arp.start()
+        # self.timer_arp = QTimer(self)
+        # self.timer_arp.setInterval(1000)  # Set interval to 1 second
+        # self.timer_arp.timeout.connect(self.start_scan)
+        # self.timer_arp.start()
 
         # Start the sniffer in a separate thread using QThreadPool
-        worker = Worker(self.packet_collector)  # Pass packet_collector to the Worker constructor
-        self.threadpool.start(worker)
+        #worker = Worker(self.packet_collector)  # Pass packet_collector to the Worker constructor
+        #self.threadpool.start(worker)
+        self.start_scan()
+
 
     @Slot()
     def start_scan(self):
