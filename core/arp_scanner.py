@@ -270,10 +270,11 @@ class ARPScannerThread(QThread):
     finished = pyqtSignal(list)
     progress_updated = pyqtSignal(int)
 
-    def __init__(self, interface, mac_vendor_lookup):
+    def __init__(self, interface, mac_vendor_lookup, timeout=5):
         super().__init__()
         self.interface = interface
         self.mac_vendor_lookup = mac_vendor_lookup
+        self.timeout = timeout
 
     def run(self):
         ip_address = scapy.get_if_addr(self.interface)
@@ -285,8 +286,13 @@ class ARPScannerThread(QThread):
             return
 
         arp_results = []
-        arp_packets = scapy.arping(network, verbose=0)[0]
-        total_packets = len(arp_packets)
+        try:
+            arp_packets = scapy.arping(network, timeout=self.timeout, verbose=1)[0]
+        except Exception as e:
+            print(f"Error during ARP scan: {e}")
+            self.finished.emit([])
+            return
+
         for i, packet in enumerate(arp_packets):
             if packet[1].haslayer(scapy.ARP):
                 ip_address = packet[1][scapy.ARP].psrc
@@ -295,9 +301,9 @@ class ARPScannerThread(QThread):
                 hostname = ARPScanner.get_hostname(ip_address)
                 arp_results.append((ip_address, mac, hostname, vendor, packet[1][scapy.ARP]))
 
-            progress = int((i + 1) / total_packets * 100)
-            self.progress_updated.emit(progress)
+            # Uncomment the following lines if you want to update progress
+            # progress = int((i + 1) / total_packets * 100)
+            # self.progress_updated.emit(progress)
 
         self.finished.emit(arp_results)
-
 
