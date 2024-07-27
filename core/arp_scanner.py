@@ -2,6 +2,7 @@ from PySide6.QtWidgets import *
 from ui.ui_arpscan import Ui_DeviceDiscovery
 from PySide6.QtGui import *
 from PySide6.QtCore import *
+from PyQt6.QtCore import QThread, pyqtSignal
 import scapy.all as scapy
 import socket
 import netifaces
@@ -9,6 +10,7 @@ import core.networking as net
 import core.sniffer as sniffer
 import core.vendor as vendor
 from core.platform import get_os
+
 
 class DeviceDetailsWindow(QMainWindow):
     def __init__(self, ip_address, mac_address, hostname, vendor):
@@ -25,14 +27,14 @@ class DeviceDetailsWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+
 class Worker(QRunnable):
     """
     Worker thread
     """
 
-    def __init__(self, interface, packet_collector):
+    def __init__(self, packet_collector):
         super().__init__()
-        self.interface = interface
         self.packet_collector = packet_collector
 
     @Slot()
@@ -41,11 +43,28 @@ class Worker(QRunnable):
         Your code goes in this function
         """
         print("Sniffer Thread start")
-        myip = net.get_ip_address()
-        print(self.interface)
         self.packet_collector.start_capture()
-        self.packet_collector.stop_capture()
         print("Sniffer Thread complete")
+
+
+class StopWorker(QRunnable):
+    """
+    Worker thread to stop the packet collector
+    """
+
+    def __init__(self, packet_collector):
+        super().__init__()
+        self.packet_collector = packet_collector
+
+    @Slot()
+    def run(self):
+        """
+        Code to stop the packet collector
+        """
+        print("Stopping Sniffer Thread")
+        self.packet_collector.stop_capture()
+        print("Stopped Sniffer Thread")
+
 
 class DeviceDiscoveryDialog(QDialog):
     def __init__(self, interface, oui_url, parent=None):
@@ -104,6 +123,10 @@ class DeviceDiscoveryDialog(QDialog):
         self.packet_collector = sniffer.PacketCollector(self.interface, net.get_ip_address())
         self.packet_collector.packetCaptured.connect(self.add_packet_to_list)
 
+        # Progress Label for ARP Scan
+        self.progress_label = QLabel("Progress: 0%")
+        self._ui.verticalLayout.addWidget(self.progress_label)
+
     def add_list_widget_to_tab_7(self):
         self.list_widget_tab7 = QListWidget()
         tab7_layout = QVBoxLayout(self._ui.tab_7)
@@ -154,26 +177,66 @@ class DeviceDiscoveryDialog(QDialog):
     def toggle_scan(self):
         self._ui.scan.setEnabled(False)
         self.timer_arp = QTimer(self)
-        self.timer_arp.setInterval(1000)  # Set interval to 20 seconds
+        self.timer_arp.setInterval(1000)  # Set interval to 1 second
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start()
 
         # Start the sniffer in a separate thread using QThreadPool
-        worker = Worker(self.interface, self.packet_collector)  # Pass self.interface and packet_collector to the Worker constructor
+        worker = Worker(self.packet_collector)  # Pass packet_collector to the Worker constructor
         self.threadpool.start(worker)
 
     @Slot()
     def start_scan(self):
-        ARPScanner.run_arp_scan(self.interface, self._ui, self.mac_vendor_lookup)
+        self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup)
+        self.arp_scanner_thread.finished.connect(self.handle_scan_results)
+        self.arp_scanner_thread.progress_updated.connect(self.update_progress)
+        self.arp_scanner_thread.start()
+
+    @Slot(list)
+    def handle_scan_results(self, results):
+        for ip_address, mac, hostname, vendor, packet in results:
+            label = f"{ip_address} {mac} {hostname} {vendor}"
+            items = self._ui.list.findItems(label, Qt.MatchExactly)
+            if not items:
+                item = QListWidgetItem(label)
+                item.setBackground(QColor(Qt.black))
+                item.setForeground(QColor(Qt.white))
+                self._ui.list.addItem(item)
+            label = str(packet)
+            items = self._ui.listpkt.findItems(label, Qt.MatchExactly)
+            if not items:
+                item = QListWidgetItem(label)
+                item.setBackground(QColor(Qt.black))
+                item.setForeground(QColor(Qt.white))
+                self._ui.listpkt.addItem(item)
+        self._ui.scan.setEnabled(True)
+
+    @Slot(int)
+    def update_progress(self, value):
+        self.progress_label.setText(f"Progress: {value}%")
 
     def quit_application(self):
         """
         Slot function to be called when the Quit button is clicked.
         Disable IP forwarding and close the application.
         """
+        self._ui.quit.setEnabled(False)
         net.disable_ip_forwarding()
-        self.packet_collector.stop_capture()
-        self.close()
+
+        # Stop the ARP scanner thread if it is running
+        if hasattr(self, 'arp_scanner_thread') and self.arp_scanner_thread.isRunning():
+            self.arp_scanner_thread.terminate()
+            self.arp_scanner_thread.wait()
+
+        # Stop the packet collector in a separate thread to avoid blocking the UI
+        stop_worker = StopWorker(self.packet_collector)
+        self.threadpool.start(stop_worker)
+        if hasattr(self, 'arp_scanner_thread') and self.arp_scanner_thread.isRunning():
+            self.arp_scanner_thread.terminate()
+            self.arp_scanner_thread.wait()
+
+        # Close the dialog after a short delay to allow stop_worker to complete
+        QTimer.singleShot(2000, self.close)  # 2-second delay
 
 class ARPScanner:
     @staticmethod
@@ -201,43 +264,38 @@ class ARPScanner:
         except Exception as e:
             return "N/A"  # Return "N/A" if hostname retrieval fails
 
-    @staticmethod
-    def run_arp_scan(interface, ui, mac_vendor_lookup):
-        # Function to perform ARP scan
-        ip_address = scapy.get_if_addr(interface)
+class ARPScannerThread(QThread):
+    finished = pyqtSignal(list)
+    progress_updated = pyqtSignal(int)
+
+    def __init__(self, interface, mac_vendor_lookup):
+        super().__init__()
+        self.interface = interface
+        self.mac_vendor_lookup = mac_vendor_lookup
+
+    def run(self):
+        ip_address = scapy.get_if_addr(self.interface)
         try:
-            netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['netmask']
-            network = ARPScanner.calculate_network_cidr(ip_address=ip_address, subnet_mask=netmask)
+            netmask = netifaces.ifaddresses(self.interface)[netifaces.AF_INET][0]['netmask']
+            network = ARPScanner.calculate_network_cidr(ip_address, netmask)
         except KeyError:
-            return "network recalculation"
+            self.finished.emit([])
+            return
+
         arp_results = []
         arp_packets = scapy.arping(network, verbose=0)[0]
-        for packet in arp_packets:
+        total_packets = len(arp_packets)
+        for i, packet in enumerate(arp_packets):
             if packet[1].haslayer(scapy.ARP):
                 ip_address = packet[1][scapy.ARP].psrc
                 mac = packet[1][scapy.ARP].hwsrc
-                vendor = mac_vendor_lookup.lookup_vendor(mac)
+                vendor = self.mac_vendor_lookup.lookup_vendor(mac)
                 hostname = ARPScanner.get_hostname(ip_address)
-                label = f"{ip_address} {mac} {hostname} {vendor}"
-                items = ui.list.findItems(label, Qt.MatchExactly)
-                if not items:
-                    item = QListWidgetItem(label)
-                    item.setBackground(QColor(Qt.black))
-                    item.setForeground(QColor(Qt.white))
-                    ui.list.addItem(item)
-                label = str(packet[1][scapy.ARP])
-                items = ui.listpkt.findItems(label, Qt.MatchExactly)
-                if not items:
-                    item = QListWidgetItem(label)
-                    item.setBackground(QColor(Qt.black))
-                    item.setForeground(QColor(Qt.white))
-                    ui.listpkt.addItem(item)
                 arp_results.append((ip_address, mac, hostname, vendor, packet[1][scapy.ARP]))
-                # Use OpenAI API to analyze packet
-                #packet_analysis = ARPScanner().analyze_packet_with_openai(label)
-                #analysis_item = QListWidgetItem(packet_analysis)
-                #analysis_item.setBackground(QColor(Qt.blue))
-                #analysis_item.setForeground(QColor(Qt.white))
-                #ui.listpkt.addItem(analysis_item)
 
-        return arp_results
+            progress = int((i + 1) / total_packets * 100)
+            self.progress_updated.emit(progress)
+
+        self.finished.emit(arp_results)
+
+
