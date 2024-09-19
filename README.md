@@ -3,6 +3,7 @@
 ## Overview
 Phantom is an **ARP Scanner** mostly designed to detect directly connected IoT devices. The tool provides details like IP addresses, MAC addresses, hostnames, and the manufacturers of the devices based on their MAC addresses.
 The tool features a graphical user interface (GUI) built with **PySide6** (Qt framework) and utilizes **scapy** for ARP scanning.
+
 ---
 
 ## Features
