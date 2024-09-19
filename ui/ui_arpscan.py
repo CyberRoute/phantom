@@ -16,8 +16,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QGroupBox,
-    QHBoxLayout, QListWidget, QListWidgetItem, QPushButton,
-    QSizePolicy, QTabWidget, QVBoxLayout, QWidget)
+    QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
+    QPushButton, QSizePolicy, QTabWidget, QVBoxLayout,
+    QWidget)
 
 class Ui_DeviceDiscovery(object):
     def setupUi(self, DeviceDiscovery):
@@ -26,10 +27,20 @@ class Ui_DeviceDiscovery(object):
         DeviceDiscovery.resize(658, 694)
         self.verticalLayout = QVBoxLayout(DeviceDiscovery)
         self.verticalLayout.setObjectName(u"verticalLayout")
+        self.label = QLabel(DeviceDiscovery)
+        self.label.setObjectName(u"label")
+
+        self.verticalLayout.addWidget(self.label)
+
         self.list = QListWidget(DeviceDiscovery)
         self.list.setObjectName(u"list")
 
         self.verticalLayout.addWidget(self.list)
+
+        self.label_2 = QLabel(DeviceDiscovery)
+        self.label_2.setObjectName(u"label_2")
+
+        self.verticalLayout.addWidget(self.label_2)
 
         self.listpkt = QListWidget(DeviceDiscovery)
         self.listpkt.setObjectName(u"listpkt")
@@ -77,12 +88,9 @@ class Ui_DeviceDiscovery(object):
 
         self.tabWidget = QTabWidget(DeviceDiscovery)
         self.tabWidget.setObjectName(u"tabWidget")
-        self.tab_7 = QWidget()
-        self.tab_7.setObjectName(u"tab_7")
-        self.tabWidget.addTab(self.tab_7, "")
-        self.tab_8 = QWidget()
-        self.tab_8.setObjectName(u"tab_8")
-        self.tabWidget.addTab(self.tab_8, "")
+        self.tab_1 = QWidget()
+        self.tab_1.setObjectName(u"tab_1")
+        self.tabWidget.addTab(self.tab_1, "")
 
         self.verticalLayout.addWidget(self.tabWidget)
 
@@ -99,13 +107,14 @@ class Ui_DeviceDiscovery(object):
 
     def retranslateUi(self, DeviceDiscovery):
         DeviceDiscovery.setWindowTitle(QCoreApplication.translate("DeviceDiscovery", u"Arp Scanner", None))
+        self.label.setText(QCoreApplication.translate("DeviceDiscovery", u"Devices detected", None))
+        self.label_2.setText(QCoreApplication.translate("DeviceDiscovery", u"ARP responses", None))
         self.groupBox.setTitle(QCoreApplication.translate("DeviceDiscovery", u"Local Device", None))
         self.power.setText(QCoreApplication.translate("DeviceDiscovery", u"Arp Scan Powered On", None))
         self.discoverable.setText(QCoreApplication.translate("DeviceDiscovery", u"Discoverable", None))
         self.scan.setText(QCoreApplication.translate("DeviceDiscovery", u"Scan", None))
         self.clear.setText(QCoreApplication.translate("DeviceDiscovery", u"Clear", None))
         self.quit.setText(QCoreApplication.translate("DeviceDiscovery", u"Quit", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_7), QCoreApplication.translate("DeviceDiscovery", u"Spoofer", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_8), QCoreApplication.translate("DeviceDiscovery", u"Sniffer", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_1), QCoreApplication.translate("DeviceDiscovery", u"Arp Traffic", None))
     # retranslateUi
 

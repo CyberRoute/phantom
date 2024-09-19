@@ -15,7 +15,21 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Devices detected</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QListWidget" name="list"/>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>ARP responses</string>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QListWidget" name="listpkt"/>
@@ -79,14 +93,9 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="QWidget" name="tab_7">
+     <widget class="QWidget" name="tab_1">
       <attribute name="title">
-       <string>Spoofer</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="tab_8">
-      <attribute name="title">
-       <string>Sniffer</string>
+       <string>Arp Traffic</string>
       </attribute>
      </widget>
     </widget>

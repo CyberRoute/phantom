@@ -1,3 +1,5 @@
+import io
+import sys
 from PySide6.QtWidgets import *
 from ui.ui_arpscan import Ui_DeviceDiscovery
 from PySide6.QtGui import *
@@ -72,7 +74,7 @@ class DeviceDiscoveryDialog(QDialog):
         self.interface = interface
         self.mac_vendor_lookup = vendor.MacVendorLookup(oui_url)
 
-        self._ui = Ui_DeviceDiscovery()  # Assuming Ui_DeviceDiscovery is defined elsewhere
+        self._ui = Ui_DeviceDiscovery()
         self._ui.setupUi(self)
         self.setWindowIcon(QIcon("images/phantom_logo.png"))
 
@@ -81,7 +83,7 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui.quit.clicked.connect(self.quit_application)
         self.interface_label = QLabel(f"Interface: {self.interface}")
         self.interface_label.setStyleSheet("color: black")
-        self.os_label = QLabel(f"OS: {get_os()}")  # Assuming get_os is defined elsewhere
+        self.os_label = QLabel(f"OS: {get_os()}")
         self.os_label.setStyleSheet("color: black")
 
         self._ui.verticalLayout.addWidget(self.os_label)
@@ -95,79 +97,66 @@ class DeviceDiscoveryDialog(QDialog):
         self.threadpool = QThreadPool()
         print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
 
-        self._ui.scan.setEnabled(True)  # Disable scan initially
+        self._ui.scan.setEnabled(True)
 
-        # Increase the size of the UI window
         self.resize(800, 600)
 
-        # Increase the font size of QListWidget items
         font = QFont()
-        font.setPointSize(12)  # Set the font size to 12
-        self._ui.list.setFont(font)  # Apply the font to the QListWidget
+        font.setPointSize(12)
+        self._ui.list.setFont(font)
         self._ui.listpkt.setFont(font)
 
-        # Add descriptions for the two QListWidgetItems
-        description_item_1 = QListWidgetItem("Devices detected")
-        description_item_1.setBackground(QColor(Qt.darkGray))
-        description_item_1.setForeground(QColor(Qt.white))
-        description_item_2 = QListWidgetItem("ARP packets")
-        description_item_2.setBackground(QColor(Qt.darkGray))
-        description_item_2.setForeground(QColor(Qt.white))
-        self._ui.list.addItem(description_item_1)
-        self._ui.listpkt.addItem(description_item_2)
+        # description_item_1 = QListWidgetItem("Devices detected")
+        # description_item_1.setBackground(QColor(Qt.darkGray))
+        # description_item_1.setForeground(QColor(Qt.white))
+        # description_item_2 = QListWidgetItem("ARP packets")
+        # description_item_2.setBackground(QColor(Qt.darkGray))
+        # description_item_2.setForeground(QColor(Qt.white))
+        # self._ui.list.addItem(description_item_1)
+        # self._ui.listpkt.addItem(description_item_2)
 
-        # Add QListWidget to tab_7
-        self.add_list_widget_to_tab_7()
+        self.add_list_widget_to_tab_1()
 
-        # Initialize PacketCollector
         self.packet_collector = sniffer.PacketCollector(self.interface, net.get_ip_address())
         self.packet_collector.packetCaptured.connect(self.add_packet_to_list)
 
-        # Progress Label for ARP Scan
         self.progress_label = QLabel("Progress: 0%")
         self._ui.verticalLayout.addWidget(self.progress_label)
 
-    def add_list_widget_to_tab_7(self):
+    def add_list_widget_to_tab_1(self):
         self.list_widget_tab7 = QListWidget()
-        tab7_layout = QVBoxLayout(self._ui.tab_7)
+        tab7_layout = QVBoxLayout(self._ui.tab_1)
         tab7_layout.addWidget(self.list_widget_tab7)
 
-        # Adding data to list_widget_tab7
-        description_item_1 = QListWidgetItem("Devices detected in tab 7")
-        description_item_1.setBackground(QColor(Qt.darkGray))
-        description_item_1.setForeground(QColor(Qt.white))
+        # description_item_1 = QListWidgetItem("Devices detected in tab 7")
+        # description_item_1.setBackground(QColor(Qt.darkGray))
+        # description_item_1.setForeground(QColor(Qt.white))
 
-        description_item_2 = QListWidgetItem("ARP packets in tab 7")
-        description_item_2.setBackground(QColor(Qt.darkGray))
-        description_item_2.setForeground(QColor(Qt.white))
+        # description_item_2 = QListWidgetItem("ARP packets in tab 7")
+        # description_item_2.setBackground(QColor(Qt.darkGray))
+        # description_item_2.setForeground(QColor(Qt.white))
 
-        self.list_widget_tab7.addItem(description_item_1)
-        self.list_widget_tab7.addItem(description_item_2)
+        # self.list_widget_tab7.addItem(description_item_1)
+        # self.list_widget_tab7.addItem(description_item_2)
 
     def add_packet_to_list(self, packet_summary):
         packet_item = QListWidgetItem(packet_summary)
-        packet_item.setBackground(QColor(Qt.darkGray))
+        packet_item.setBackground(QColor(Qt.black))
         packet_item.setForeground(QColor(Qt.white))
-        print(packet_summary)
         self.list_widget_tab7.addItem(packet_item)
 
     @Slot(QListWidgetItem)
     def open_device_details(self, item):
-        # Get the text of the clicked item
         selected_text = item.text()
 
-        # Split the selected text
         parts = selected_text.split()
 
-        # Check if there are at least four parts
         if len(parts) >= 4:
-            # Extract device information from the parts
             self.ip_address = parts[0]
             self.mac = parts[1]
-            self.hostname = parts[2]  # Join the hostname parts
+            self.hostname = parts[2]
             self.vendor = " ".join(parts[3:])
 
-            # Open the detailed information window
             self.device_details_window = DeviceDetailsWindow(self.ip_address, self.mac, self.hostname, self.vendor)
             self.device_details_window.show()
         else:
@@ -176,22 +165,17 @@ class DeviceDiscoveryDialog(QDialog):
     @Slot()
     def toggle_scan(self):
         self._ui.scan.setEnabled(False)
-        # self.timer_arp = QTimer(self)
-        # self.timer_arp.setInterval(1000)  # Set interval to 1 second
-        # self.timer_arp.timeout.connect(self.start_scan)
-        # self.timer_arp.start()
-
-        # Start the sniffer in a separate thread using QThreadPool
-        #worker = Worker(self.packet_collector)  # Pass packet_collector to the Worker constructor
-        #self.threadpool.start(worker)
-        self.start_scan()
-
+        self.timer_arp = QTimer(self)
+        self.timer_arp.setInterval(9000)
+        self.timer_arp.timeout.connect(self.start_scan)
+        self.timer_arp.start()
 
     @Slot()
     def start_scan(self):
         self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup)
         self.arp_scanner_thread.finished.connect(self.handle_scan_results)
         self.arp_scanner_thread.progress_updated.connect(self.update_progress)
+        self.arp_scanner_thread.verbose_output.connect(self.update_tab7_verbose_output)
         self.arp_scanner_thread.start()
 
     @Slot(list)
@@ -217,28 +201,35 @@ class DeviceDiscoveryDialog(QDialog):
     def update_progress(self, value):
         self.progress_label.setText(f"Progress: {value}%")
 
+    @Slot(str)
+    def update_tab7_verbose_output(self, verbose_output):
+        # Update the list_widget_tab7 with verbose output
+        font = QFont()
+        font.setPointSize(12)
+        self._ui.tab_1.setFont(font)
+
+        for line in verbose_output.splitlines():
+            if line.strip():  # Skip empty lines
+                item = QListWidgetItem(line)
+                item.setBackground(QColor(Qt.black))
+                item.setForeground(QColor(Qt.white))
+                self.list_widget_tab7.addItem(item)
+
     def quit_application(self):
-        """
-        Slot function to be called when the Quit button is clicked.
-        Disable IP forwarding and close the application.
-        """
         self._ui.quit.setEnabled(False)
         net.disable_ip_forwarding()
 
-        # Stop the ARP scanner thread if it is running
         if hasattr(self, 'arp_scanner_thread') and self.arp_scanner_thread.isRunning():
             self.arp_scanner_thread.terminate()
             self.arp_scanner_thread.wait()
 
-        # Stop the packet collector in a separate thread to avoid blocking the UI
         stop_worker = StopWorker(self.packet_collector)
         self.threadpool.start(stop_worker)
         if hasattr(self, 'arp_scanner_thread') and self.arp_scanner_thread.isRunning():
             self.arp_scanner_thread.terminate()
             self.arp_scanner_thread.wait()
 
-        # Close the dialog after a short delay to allow stop_worker to complete
-        QTimer.singleShot(2000, self.close)  # 2-second delay
+        QTimer.singleShot(2000, self.close)
 
 class ARPScanner:
     @staticmethod
@@ -269,6 +260,7 @@ class ARPScanner:
 class ARPScannerThread(QThread):
     finished = pyqtSignal(list)
     progress_updated = pyqtSignal(int)
+    verbose_output = pyqtSignal(str)  # Signal to emit verbose output
 
     def __init__(self, interface, mac_vendor_lookup, timeout=5):
         super().__init__()
@@ -286,12 +278,23 @@ class ARPScannerThread(QThread):
             return
 
         arp_results = []
+        original_stdout = sys.stdout  # Save a reference to the original standard output
         try:
+            # Redirect stdout to capture Scapy output
+            sys.stdout = io.StringIO()
+
             arp_packets = scapy.arping(network, timeout=self.timeout, verbose=1)[0]
+
+            # Get the verbose output
+            verbose_output = sys.stdout.getvalue()
+            self.verbose_output.emit(verbose_output)  # Emit the verbose output
+
         except Exception as e:
             print(f"Error during ARP scan: {e}")
             self.finished.emit([])
             return
+        finally:
+            sys.stdout = original_stdout  # Reset the standard output to its original state
 
         for i, packet in enumerate(arp_packets):
             if packet[1].haslayer(scapy.ARP):
@@ -301,9 +304,7 @@ class ARPScannerThread(QThread):
                 hostname = ARPScanner.get_hostname(ip_address)
                 arp_results.append((ip_address, mac, hostname, vendor, packet[1][scapy.ARP]))
 
-            # Uncomment the following lines if you want to update progress
-            # progress = int((i + 1) / total_packets * 100)
-            # self.progress_updated.emit(progress)
-
+            progress = int((i + 1) / len(arp_packets) * 100)
+            self.progress_updated.emit(progress)
         self.finished.emit(arp_results)
 
