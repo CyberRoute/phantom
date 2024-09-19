@@ -86,7 +86,7 @@ Ensure the following dependencies are installed:
     After running the application with the correct interface, the GUI will launch.
 
 <div align="center">
-    <img src="/images/phan.png" width="800px"</img>
+    <img src="/images/phantom.png" width="800px"</img>
 </div>
 
 2. **Scanning the Network**:
