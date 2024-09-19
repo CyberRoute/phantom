@@ -1,10 +1,8 @@
 # Phantom
 
 ## Overview
-Phantom is an **ARP Scanner** tool that scans the network and retrieves information about devices connected to the same network. The tool provides details like IP addresses, MAC addresses, hostnames, and the manufacturers of the devices based on their MAC addresses.
-
+Phantom is an **ARP Scanner** mostly designed to detect directly connected IoT devices. The tool provides details like IP addresses, MAC addresses, hostnames, and the manufacturers of the devices based on their MAC addresses.
 The tool features a graphical user interface (GUI) built with **PySide6** (Qt framework) and utilizes **scapy** for ARP scanning.
-
 ---
 
 ## Features
@@ -43,7 +41,7 @@ Ensure the following dependencies are installed:
 
     ```bash
     git clone https://github.com/CyberRoute/phantom.git
-    cd arp-scanner
+    cd phantom
     ```
 
 2. **Install the dependencies with Pipenv**:
@@ -105,4 +103,7 @@ Ensure the following dependencies are installed:
 5. **Stopping the Scan**:
 
     - Press the **"Quit"** button to stop the ARP scan and close the application.
+
+## Contribute
+Fork the repo and send PRs if you like :)
 
