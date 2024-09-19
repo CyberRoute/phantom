@@ -106,22 +106,13 @@ class DeviceDiscoveryDialog(QDialog):
         self._ui.list.setFont(font)
         self._ui.listpkt.setFont(font)
 
-        # description_item_1 = QListWidgetItem("Devices detected")
-        # description_item_1.setBackground(QColor(Qt.darkGray))
-        # description_item_1.setForeground(QColor(Qt.white))
-        # description_item_2 = QListWidgetItem("ARP packets")
-        # description_item_2.setBackground(QColor(Qt.darkGray))
-        # description_item_2.setForeground(QColor(Qt.white))
-        # self._ui.list.addItem(description_item_1)
-        # self._ui.listpkt.addItem(description_item_2)
-
         self.add_list_widget_to_tab_1()
 
         self.packet_collector = sniffer.PacketCollector(self.interface, net.get_ip_address())
         self.packet_collector.packetCaptured.connect(self.add_packet_to_list)
 
-        self.progress_label = QLabel("Progress: 0%")
-        self._ui.verticalLayout.addWidget(self.progress_label)
+        # self.progress_label = QLabel("Progress: 0%")
+        # self._ui.verticalLayout.addWidget(self.progress_label)
 
     def add_list_widget_to_tab_1(self):
         self.list_widget_tab7 = QListWidget()
@@ -304,7 +295,7 @@ class ARPScannerThread(QThread):
                 hostname = ARPScanner.get_hostname(ip_address)
                 arp_results.append((ip_address, mac, hostname, vendor, packet[1][scapy.ARP]))
 
-            progress = int((i + 1) / len(arp_packets) * 100)
-            self.progress_updated.emit(progress)
+            # progress = int((i + 1) / len(arp_packets) * 100)
+            # self.progress_updated.emit(progress)
         self.finished.emit(arp_results)
 
