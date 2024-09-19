@@ -50,19 +50,19 @@ Ensure the following dependencies are installed:
     Install `pipenv` if it's not already installed:
 
     ```bash
-    pip install pipenv
+    sudo pip install pipenv
     ```
 
     Then, use `pipenv` to create the virtual environment and install the required dependencies:
 
     ```bash
-    pipenv install
+    sudo pipenv install
     ```
 
     To activate the virtual environment:
 
     ```bash
-    pipenv shell
+    sudo pipenv shell
     ```
 
 3. **Run the application**:

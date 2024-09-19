@@ -1,9 +1,5 @@
 from PyQt6.QtCore import QObject, pyqtSignal as Signal
 import scapy.all as scapy
-from openai import OpenAI
-
-client = OpenAI(api_key='')  # Import OpenAI
-
 
 
 class PacketCollector(QObject):
@@ -34,17 +30,3 @@ class PacketCollector(QObject):
 
     def stop_capture(self):
         self.running = False
-
-    @staticmethod
-    def analyze_packet_with_openai(packet_info):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": f"Analyze the following packet information: {packet_info}"}
-                ]
-            )
-            print(response.choices[0].message.content.strip())
-        except Exception as e:
-            return f"Error during OpenAI API call: {str(e)}"
