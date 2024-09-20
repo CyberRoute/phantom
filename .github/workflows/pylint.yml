@@ -20,4 +20,4 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint --ignore=ui $(git ls-files '*.py')
+        pylint $(find . -type f -name "*.py" ! -path "./ui/*")
