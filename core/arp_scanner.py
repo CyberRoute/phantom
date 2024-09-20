@@ -1,3 +1,6 @@
+"""
+Arp Scanner
+"""
 import io
 import sys
 from PySide6.QtWidgets import *
@@ -41,9 +44,6 @@ class Worker(QRunnable):
 
     @Slot()
     def run(self):
-        """
-        Your code goes in this function
-        """
         print("Sniffer Thread start")
         self.packet_collector.start_capture()
         print("Sniffer Thread complete")
@@ -148,7 +148,12 @@ class DeviceDiscoveryDialog(QDialog):
             self.hostname = parts[2]
             self.vendor = " ".join(parts[3:])
 
-            self.device_details_window = DeviceDetailsWindow(self.ip_address, self.mac, self.hostname, self.vendor)
+            self.device_details_window = DeviceDetailsWindow(
+                self.ip_address,
+                self.mac,
+                self.hostname,
+                self.vendor
+            )
             self.device_details_window.show()
         else:
             print("Invalid format: Not enough information")
@@ -298,4 +303,3 @@ class ARPScannerThread(QThread):
             # progress = int((i + 1) / len(arp_packets) * 100)
             # self.progress_updated.emit(progress)
         self.finished.emit(arp_results)
-
