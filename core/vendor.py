@@ -1,7 +1,7 @@
+import os
 import csv
 from io import StringIO
 import requests
-import os
 
 
 class MacVendorLookup:

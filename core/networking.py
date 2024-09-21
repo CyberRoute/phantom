@@ -1,6 +1,7 @@
-import core.platform as platform
 import subprocess
 import socket
+import core.platform as platform
+
 
 def enable_ip_forwarding():
 
@@ -42,4 +43,3 @@ def get_ip_address():
     except Exception as e:
         print(f"Error while getting IP address: {e}")
         return None
-    
