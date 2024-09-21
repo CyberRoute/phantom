@@ -18,13 +18,11 @@ from PySide6.QtWidgets import ( # pylint: disable=E0611
 from PySide6.QtGui import QIcon, QFont, QColor # pylint: disable=E0611
 from PySide6.QtCore import QRunnable, Slot, Qt, QThreadPool, QTimer # pylint: disable=E0611
 from PyQt6.QtCore import QThread, pyqtSignal # pylint: disable=E0611
-from ui.ui_arpscan import Ui_DeviceDiscovery # pylint: disable=E0401
+from ui.ui_arpscan import Ui_DeviceDiscovery
 from core import sniffer
 from core import vendor
 from core.platform import get_os
 import core.networking as net
-
-
 
 
 class DeviceDetailsWindow(QMainWindow): # pylint: disable=too-few-public-methods
