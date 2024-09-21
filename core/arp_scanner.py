@@ -3,22 +3,41 @@ Arp Scanner
 """
 import io
 import sys
-from PySide6.QtWidgets import *
-from ui.ui_arpscan import Ui_DeviceDiscovery
-from PySide6.QtGui import *
-from PySide6.QtCore import *
-from PyQt6.QtCore import QThread, pyqtSignal
-import scapy.all as scapy
 import socket
 import netifaces
-import core.networking as net
-import core.sniffer as sniffer
-import core.vendor as vendor
+import scapy.all as scapy
+from PySide6.QtWidgets import ( # pylint: disable=E0611
+    QMainWindow,
+    QVBoxLayout,
+    QLabel,
+    QWidget,
+    QDialog,
+    QListWidget,
+    QListWidgetItem
+)
+from PySide6.QtGui import QIcon, QFont, QColor # pylint: disable=E0611
+from PySide6.QtCore import QRunnable, Slot, Qt, QThreadPool, QTimer # pylint: disable=E0611
+from PyQt6.QtCore import QThread, pyqtSignal # pylint: disable=E0611
+from ui.ui_arpscan import Ui_DeviceDiscovery # pylint: disable=E0401
+from core import sniffer
+from core import vendor
 from core.platform import get_os
+import core.networking as net
 
 
-class DeviceDetailsWindow(QMainWindow):
-    def __init__(self, ip_address, mac_address, hostname, vendor):
+
+
+class DeviceDetailsWindow(QMainWindow): # pylint: disable=too-few-public-methods
+    """
+    A window that displays detailed information about a network device.
+
+    Attributes:
+        ip_address (str): The IP address of the device.
+        mac_address (str): The MAC address of the device.
+        hostname (str): The hostname of the device.
+        vendor (str): The vendor of the device.
+    """
+    def __init__(self, ip_address, mac_address, hostname, device_vendor):
         super().__init__()
         self.setWindowTitle("Device Details")
 
@@ -26,7 +45,7 @@ class DeviceDetailsWindow(QMainWindow):
         layout.addWidget(QLabel(f"IP Address: {ip_address}"))
         layout.addWidget(QLabel(f"MAC Address: {mac_address}"))
         layout.addWidget(QLabel(f"Hostname: {hostname}"))
-        layout.addWidget(QLabel(f"Vendor: {vendor}"))
+        layout.addWidget(QLabel(f"Vendor: {device_vendor}"))
 
         central_widget = QWidget()
         central_widget.setLayout(layout)
@@ -176,8 +195,8 @@ class DeviceDiscoveryDialog(QDialog):
 
     @Slot(list)
     def handle_scan_results(self, results):
-        for ip_address, mac, hostname, vendor, packet in results:
-            label = f"{ip_address} {mac} {hostname} {vendor}"
+        for ip_address, mac, hostname, device_vendor, packet in results:
+            label = f"{ip_address} {mac} {hostname} {device_vendor}"
             items = self._ui.list.findItems(label, Qt.MatchExactly)
             if not items:
                 item = QListWidgetItem(label)
