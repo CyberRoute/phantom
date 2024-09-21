@@ -11,6 +11,7 @@ netifaces = "*"
 pyqtgraph = "*"
 pyqt6 = "*"
 pyside6 = "*"
+pylint = "*"
 
 [dev-packages]
 
