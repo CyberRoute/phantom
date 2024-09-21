@@ -309,7 +309,7 @@ class ARPScannerThread(QThread):
         finally:
             sys.stdout = original_stdout  # Reset the standard output to its original state
 
-        for i, packet in enumerate(arp_packets):
+        for _, packet in enumerate(arp_packets):
             if packet[1].haslayer(scapy.ARP):
                 ip_address = packet[1][scapy.ARP].psrc
                 mac = packet[1][scapy.ARP].hwsrc
