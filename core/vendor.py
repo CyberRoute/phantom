@@ -75,7 +75,7 @@ class MacVendorLookup:
             dict: A dictionary mapping OUI (first 6 characters of MAC address) to vendor names.
             If the request fails, returns an empty dictionary.
         """
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=1)
         if response.status_code == 200:
             csv_data = StringIO(response.text)
             csvreader = csv.reader(csv_data)
@@ -102,7 +102,6 @@ class MacVendorLookup:
         """
         with open(filename, 'w', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow(["Organizationally Unique Identifier", "Organization Name"])
             for oui, vendor in data.items():
                 writer.writerow([oui, vendor])
 

@@ -275,7 +275,7 @@ class ARPScannerThread(QThread):
     progress_updated = pyqtSignal(int)
     verbose_output = pyqtSignal(str)  # Signal to emit verbose output
 
-    def __init__(self, interface, mac_vendor_lookup, timeout=5):
+    def __init__(self, interface, mac_vendor_lookup, timeout=1):
         super().__init__()
         self.interface = interface
         self.mac_vendor_lookup = mac_vendor_lookup
