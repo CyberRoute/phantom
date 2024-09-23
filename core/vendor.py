@@ -53,11 +53,15 @@ class MacVendorLookup:
         """
         with open(filename, 'r', encoding='utf-8') as file:
             csvreader = csv.reader(file)
-            next(csvreader)  # Skip header
             mac_vendor_data = {}
             for row in csvreader:
-                oui = row[1].replace("-", "").upper()[:6]
-                vendor = row[2]
+                # Ensure the row has at least 2 elements (OUI and vendor name)
+                if len(row) < 2:
+                    continue
+
+                oui = row[0].replace("-", "").upper()[:6]  # OUI is in the first column (index 0)
+                vendor = row[1]  # Vendor name is in the second column (index 1)
+                print(f"Processing OUI: {oui}, Vendor: {vendor}")
                 mac_vendor_data[oui] = vendor
             return mac_vendor_data
 
