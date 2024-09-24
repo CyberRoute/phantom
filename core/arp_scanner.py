@@ -179,7 +179,7 @@ class DeviceDiscoveryDialog(QDialog):
     def toggle_scan(self):
         self._ui.scan.setEnabled(False)
         self.timer_arp = QTimer(self)
-        self.timer_arp.setInterval(9000)
+        self.timer_arp.setInterval(1000)
         self.timer_arp.timeout.connect(self.start_scan)
         self.timer_arp.start()
 
@@ -194,7 +194,7 @@ class DeviceDiscoveryDialog(QDialog):
     @Slot(list)
     def handle_scan_results(self, results):
         for ip_address, mac, hostname, device_vendor, packet in results:
-            label = f"{ip_address} {mac} {hostname} {device_vendor}"
+            label = f"{ip_address} {mac} {hostname}, {device_vendor}"
             items = self._ui.list.findItems(label, Qt.MatchExactly)
             if not items:
                 item = QListWidgetItem(label)

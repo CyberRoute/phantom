@@ -20,6 +20,14 @@ class MacVendorLookup:
 
     mac_vendor_data = None
 
+    def __init__(self, url):
+        """Initializes the MacVendorLookup class by loading the MAC vendor data.
+
+        Args:
+            url (str): The URL from which to fetch the MAC vendor data if the cache doesn't exist.
+        """
+        self.load_data(url)
+
     @classmethod
     def load_data(cls, url):
         """Loads MAC address to vendor data, either from a cached file or a URL.
@@ -41,81 +49,95 @@ class MacVendorLookup:
 
     @classmethod
     def _load_from_file(cls, filename):
-        """Loads MAC vendor data from a local CSV file.
-
-        The CSV file should have a header row followed by rows of OUI and vendor information.
+        """Loads MAC vendor data from a local CSV file in the format:
+        Registry, Assignment (OUI), Organization Name, Organization Address.
 
         Args:
             filename (str): The path to the CSV file to read from.
 
         Returns:
-            dict: A dictionary mapping OUI (first 6 characters of MAC address) to vendor names.
+            list of dict: A list of dictionaries containing the fields:
+                        'Registry', 'Assignment', 'Organization Name', and 'Organization Address'.
         """
         with open(filename, 'r', encoding='utf-8') as file:
             csvreader = csv.reader(file)
-            mac_vendor_data = {}
+            mac_vendor_data = []
+            next(csvreader)  # Skip header row
             for row in csvreader:
-                # Ensure the row has at least 2 elements (OUI and vendor name)
-                if len(row) < 2:
+                # Ensure the row has at least 4 elements (Registry, OUI, Organization Name, Organization Address)
+                if len(row) < 4:
                     continue
 
-                oui = row[0].replace("-", "").upper()[:6]  # OUI is in the first column (index 0)
-                vendor = row[1]  # Vendor name is in the second column (index 1)
-                print(f"Processing OUI: {oui}, Vendor: {vendor}")
-                mac_vendor_data[oui] = vendor
+                mac_vendor_data.append({
+                    'Registry': row[0],  # MA-L
+                    'Assignment': row[1].replace("-", "").upper(),  # OUI (without dashes)
+                    'Organization Name': row[2],  # Organization name
+                    'Organization Address': row[3]  # Organization address
+                })
             return mac_vendor_data
+
 
     @classmethod
     def _load_from_url(cls, url):
-        """Loads MAC vendor data from a given URL.
-
-        Fetches the CSV data from the provided URL and parses it into
-        a dictionary of OUI to vendor mappings.
+        """Loads MAC vendor data from a given URL in the same format as expected by the file.
 
         Args:
             url (str): The URL to fetch the MAC vendor data from.
 
         Returns:
-            dict: A dictionary mapping OUI (first 6 characters of MAC address) to vendor names.
-            If the request fails, returns an empty dictionary.
+            list of dict: A list of dictionaries containing the fields:
+                        'Registry', 'Assignment', 'Organization Name', and 'Organization Address'.
         """
         response = requests.get(url, timeout=1)
         if response.status_code == 200:
             csv_data = StringIO(response.text)
             csvreader = csv.reader(csv_data)
-            next(csvreader)  # Skip header
-            mac_vendor_data = {}
+            next(csvreader)  # Skip header row
+            mac_vendor_data = []
             for row in csvreader:
-                oui = row[1].replace("-", "").upper()[:6]
-                vendor = row[2]
-                mac_vendor_data[oui] = vendor
+                # Ensure the row has at least 4 elements (Registry, OUI, Organization Name, Organization Address)
+                if len(row) < 4:
+                    continue
+
+                mac_vendor_data.append({
+                    'Registry': row[0],  # MA-L
+                    'Assignment': row[1].replace("-", "").upper(),  # OUI (without dashes)
+                    'Organization Name': row[2],  # Organization name
+                    'Organization Address': row[3]  # Organization address
+                })
             return mac_vendor_data
-        print(f"Failed to fetch data from {url}. Status code: {response.status_code}")
-        return {}
+        else:
+            print(f"Failed to fetch data from {url}. Status code: {response.status_code}")
+            return []
+
+
 
     @classmethod
     def _save_to_file(cls, filename, data):
         """Saves the MAC vendor data to a local CSV file.
 
-        The file will contain two columns: OUI and vendor name. This method
-        will overwrite the file if it already exists.
+        The file will contain four columns: Registry, Assignment (OUI), Organization Name, and Organization Address.
 
         Args:
             filename (str): The path to the file where the data should be saved.
-            data (dict): A dictionary containing OUI to vendor mappings.
+            data (list of dict): A list of dictionaries containing the fields:
+                                'Registry', 'Assignment', 'Organization Name', and 'Organization Address'.
         """
-        with open(filename, 'w', encoding='utf-8') as file:
+        with open(filename, 'w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            for oui, vendor in data.items():
-                writer.writerow([oui, vendor])
 
-    def __init__(self, url):
-        """Initializes the MacVendorLookup class by loading the MAC vendor data.
+            # Write the header row
+            writer.writerow(['Registry', 'Assignment', 'Organization Name', 'Organization Address'])
 
-        Args:
-            url (str): The URL from which to fetch the MAC vendor data if the cache doesn't exist.
-        """
-        self.load_data(url)
+            # Write the data rows
+            for entry in data:
+                writer.writerow([
+                    entry['Registry'],
+                    entry['Assignment'],
+                    entry['Organization Name'],
+                    entry['Organization Address']
+                ])
+
 
     def lookup_vendor(self, mac_address):
         """Looks up the vendor for a given MAC address.
@@ -134,4 +156,8 @@ class MacVendorLookup:
         """
         cleaned_mac = mac_address.upper().replace(":", "").replace("-", "")
         oui = cleaned_mac[:6]
-        return self.mac_vendor_data.get(oui, "Vendor not found")
+        for entry in self.mac_vendor_data:
+            if entry['Assignment'] == oui:
+                return entry['Organization Name']  # Return the organization name
+        return "Vendor not found"
+
