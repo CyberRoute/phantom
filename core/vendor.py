@@ -64,7 +64,6 @@ class MacVendorLookup:
             mac_vendor_data = []
             next(csvreader)  # Skip header row
             for row in csvreader:
-                # Ensure the row has at least 4 elements (Registry, OUI, Organization Name, Organization Address)
                 if len(row) < 4:
                     continue
 
@@ -95,7 +94,6 @@ class MacVendorLookup:
             next(csvreader)  # Skip header row
             mac_vendor_data = []
             for row in csvreader:
-                # Ensure the row has at least 4 elements (Registry, OUI, Organization Name, Organization Address)
                 if len(row) < 4:
                     continue
 
@@ -106,9 +104,8 @@ class MacVendorLookup:
                     'Organization Address': row[3]  # Organization address
                 })
             return mac_vendor_data
-        else:
-            print(f"Failed to fetch data from {url}. Status code: {response.status_code}")
-            return []
+        print(f"Failed to fetch data from {url}. Status code: {response.status_code}")
+        return []
 
 
 
@@ -116,12 +113,13 @@ class MacVendorLookup:
     def _save_to_file(cls, filename, data):
         """Saves the MAC vendor data to a local CSV file.
 
-        The file will contain four columns: Registry, Assignment (OUI), Organization Name, and Organization Address.
+        The file will contain four columns:
+        Registry, Assignment (OUI), Organization Name, and Organization Address.
 
         Args:
             filename (str): The path to the file where the data should be saved.
             data (list of dict): A list of dictionaries containing the fields:
-                                'Registry', 'Assignment', 'Organization Name', and 'Organization Address'.
+            'Registry', 'Assignment', 'Organization Name', and 'Organization Address'.
         """
         with open(filename, 'w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
@@ -156,8 +154,8 @@ class MacVendorLookup:
         """
         cleaned_mac = mac_address.upper().replace(":", "").replace("-", "")
         oui = cleaned_mac[:6]
-        for entry in self.mac_vendor_data:
-            if entry['Assignment'] == oui:
-                return entry['Organization Name']  # Return the organization name
+        if self.mac_vendor_data is not None:
+            for entry in self.mac_vendor_data:
+                if entry['Assignment'] == oui:
+                    return entry['Organization Name']  # Return the organization name
         return "Vendor not found"
-
