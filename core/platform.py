@@ -1,3 +1,5 @@
+"""Module Platform"""
+
 import sys
 
 
