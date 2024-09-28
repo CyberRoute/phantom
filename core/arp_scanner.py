@@ -3,7 +3,6 @@ Module Arp Scanner
 """
 import io
 import sys
-import socket
 import netifaces
 from scapy.all import arping, ARP, get_if_addr # pylint: disable=E0611
 from PySide6.QtWidgets import ( # pylint: disable=E0611
