@@ -1,3 +1,9 @@
+<p align="center">
+  <img alt="Phantom" src="https://raw.githubusercontent.com/CyberRoute/phantom/main/images/phantom_logo.png"/>
+  <p align="center">
+  </p>
+</p>
+
 # Phantom
 
 ## Overview
