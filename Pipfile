@@ -12,6 +12,7 @@ pyqtgraph = "*"
 pyqt6 = "*"
 pyside6 = "*"
 pylint = "*"
+typing-extensions = "*"
 
 [dev-packages]
 

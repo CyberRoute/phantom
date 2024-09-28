@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9a2a5d32a9624a5e60a553fda3db490ef8c4b96e6f36a7a652c553f27ac3c47a"
+            "sha256": "e17677e4c433620a55fe48aa5c86b300938ba290fdc6927ccaa3c342da0d40b4"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -417,11 +417,12 @@
         },
         "scapy": {
             "hashes": [
-                "sha256:5b260c2b754fd8d409ba83ee7aee294ecdbb2c235f9f78fe90bc11cb6e5debc2"
+                "sha256:6cf241e9b93f3b93bbb48fc259edb1d1f14ba1d88d72c80fb66b3b02eb5493dc",
+                "sha256:c8f7eb54511c2fab502128ccf18e2e4b98e1f6af6e02ae15b84ad3039143ba3b"
             ],
             "index": "pypi",
-            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3' and python_version < '4'",
-            "version": "==2.5.0"
+            "markers": "python_version >= '3.7' and python_version < '4'",
+            "version": "==2.6.0"
         },
         "shiboken6": {
             "hashes": [
@@ -454,7 +455,8 @@
                 "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
                 "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
             ],
-            "markers": "python_version < '3.10'",
+            "index": "pypi",
+            "markers": "python_version >= '3.8'",
             "version": "==4.12.2"
         },
         "urllib3": {
