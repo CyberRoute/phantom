@@ -48,6 +48,7 @@ def disable_ip_forwarding():
 
     assert subprocess.call(cmd) == 0
 
+
 def get_ip_address():
     """Get the IP address of the current machine."""
     try:
@@ -58,3 +59,21 @@ def get_ip_address():
     except OSError as e:
         print(f"Error while getting IP address: {e}")
         return None
+
+
+def calculate_network_cidr(ip_address, subnet_mask):
+        """calculate network cidr"""
+        # Split the IP address and subnet mask into octets
+        ip_octets = [int(octet) for octet in ip_address.split('.')]
+        subnet_octets = [int(octet) for octet in subnet_mask.split('.')]
+
+        # Perform bitwise AND operation on corresponding octets
+        network_octets = [ip_octets[i] & subnet_octets[i] for i in range(4)]
+
+        # Calculate the number of set bits in the subnet mask
+        prefix_length = sum(bin(octet).count('1') for octet in subnet_octets)
+
+        # Format the network address in CIDR notation
+        network_address = '.'.join(map(str, network_octets)) + '/' + str(prefix_length)
+
+        return network_address
