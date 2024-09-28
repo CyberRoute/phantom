@@ -60,20 +60,30 @@ def get_ip_address():
         print(f"Error while getting IP address: {e}")
         return None
 
+def get_hostname(ip_address):
+    "get hostname"
+    try:
+        hostname = socket.gethostbyaddr(ip_address)[0]
+        return hostname
+    except socket.herror:
+        return "N/A"
+    except socket.gaierror:
+        return "N/A"
+
 
 def calculate_network_cidr(ip_address, subnet_mask):
-        """calculate network cidr"""
-        # Split the IP address and subnet mask into octets
-        ip_octets = [int(octet) for octet in ip_address.split('.')]
-        subnet_octets = [int(octet) for octet in subnet_mask.split('.')]
+    """calculate network cidr"""
+    # Split the IP address and subnet mask into octets
+    ip_octets = [int(octet) for octet in ip_address.split('.')]
+    subnet_octets = [int(octet) for octet in subnet_mask.split('.')]
 
-        # Perform bitwise AND operation on corresponding octets
-        network_octets = [ip_octets[i] & subnet_octets[i] for i in range(4)]
+    # Perform bitwise AND operation on corresponding octets
+    network_octets = [ip_octets[i] & subnet_octets[i] for i in range(4)]
 
-        # Calculate the number of set bits in the subnet mask
-        prefix_length = sum(bin(octet).count('1') for octet in subnet_octets)
+    # Calculate the number of set bits in the subnet mask
+    prefix_length = sum(bin(octet).count('1') for octet in subnet_octets)
 
-        # Format the network address in CIDR notation
-        network_address = '.'.join(map(str, network_octets)) + '/' + str(prefix_length)
+    # Format the network address in CIDR notation
+    network_address = '.'.join(map(str, network_octets)) + '/' + str(prefix_length)
 
-        return network_address
+    return network_address

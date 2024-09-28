@@ -199,19 +199,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
             self.arp_scanner_thread.wait()
         QTimer.singleShot(2000, self.close)
 
-class ARPScanner:
-    """Arp Scanner"""
-
-    @staticmethod
-    def get_hostname(ip_address):
-        "get hostname"
-        try:
-            hostname = socket.gethostbyaddr(ip_address)[0]
-            return hostname
-        except socket.herror:
-            return "N/A"
-        except socket.gaierror:
-            return "N/A"
 
 class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
     """Executing arp scan in separate thread"""
@@ -259,6 +246,6 @@ class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
                 ip_address = packet[1][ARP].psrc
                 mac = packet[1][ARP].hwsrc
                 device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
-                hostname = ARPScanner.get_hostname(ip_address)
+                hostname = net.get_hostname(ip_address)
                 arp_results.append((ip_address, mac, hostname, device_vendor, packet[1][ARP]))
         self.finished.emit(arp_results)
