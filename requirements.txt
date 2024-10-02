@@ -1,8 +1,14 @@
+astroid==3.3.4
 certifi==2024.8.30
 charset-normalizer==3.3.2
+dill==0.3.9
 idna==3.10
+isort==5.13.2
+mccabe==0.7.0
 netifaces==0.11.0
 numpy==2.1.1
+platformdirs==4.3.6
+pylint==3.3.1
 PyQt6==6.7.1
 PyQt6-Qt6==6.7.3
 PyQt6_sip==13.8.0
@@ -13,4 +19,5 @@ PySide6_Essentials==6.7.3
 requests==2.32.3
 scapy==2.6.0
 shiboken6==6.7.3
+tomlkit==0.13.2
 urllib3==2.2.3
