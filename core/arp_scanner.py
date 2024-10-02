@@ -1,8 +1,6 @@
 """
 Module Arp Scanner
 """
-import io
-import sys
 import netifaces
 from scapy.all import arping, ARP, get_if_addr # pylint: disable=E0611
 from PySide6.QtWidgets import ( # pylint: disable=E0611
@@ -159,10 +157,21 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
     @Slot()
     def start_scan(self):
         """Starts scanning the network."""
-        self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup) # pylint: disable=attribute-defined-outside-init
+        # Check if there's already a running scan, and don't start another one
+        if hasattr(self, 'arp_scanner_thread') and self.arp_scanner_thread.isRunning():
+            print("Scan is already in progress.")
+            return
+
+        # Create and start a new ARP scan thread
+        self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup)
+        
+        # Connect signals to handle thread completion and verbose output
         self.arp_scanner_thread.finished.connect(self.handle_scan_results)
         self.arp_scanner_thread.verbose_output.connect(self.update_tab7_verbose_output)
+        
+        # Start the thread
         self.arp_scanner_thread.start()
+        print("Started ARP scan.")
 
     @Slot(list)
     def handle_scan_results(self, results):
@@ -175,7 +184,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
             packet_label = str(packet)
             self.add_packet_if_new(packet_label)
 
-        self._ui.scan.setEnabled(True)
 
     def add_device_to_list(self, ip_address, mac, hostname, device_vendor):
         """Adds a device to the list widget in the UI."""
@@ -239,24 +247,13 @@ class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
             return
 
         arp_results = []
-        original_stdout = sys.stdout  # Save a reference to the original standard output
         try:
-            # Redirect stdout to capture Scapy output
-            sys.stdout = io.StringIO()
-
             arp_packets = arping(network, timeout=self.timeout, verbose=1)[0]
-
-            # Get the verbose output
-            verbose_output = sys.stdout.getvalue()
-            self.verbose_output.emit(verbose_output)  # Emit the verbose output
-
         except Exception as e: # pylint: disable=broad-exception-caught
             print(f"Error during ARP scan: {e}")
             self.finished.emit([])
             return
-        finally:
-            sys.stdout = original_stdout  # Reset the standard output to its original state
-
+        
         for _, packet in enumerate(arp_packets):
             if packet[1].haslayer(ARP):
                 ip_address = packet[1][ARP].psrc
