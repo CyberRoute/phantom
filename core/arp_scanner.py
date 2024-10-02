@@ -66,6 +66,7 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         # Initialize scanner and device info storage
         self.scanner_timer = None
         self.device_info = {}  # Store dynamic device info here
+        self.arp_scanner_thread = None
 
     def setup_ui_elements(self):
         """Sets up the UI elements and connections."""
@@ -158,17 +159,15 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
     def start_scan(self):
         """Starts scanning the network."""
         # Check if there's already a running scan, and don't start another one
-        if hasattr(self, 'arp_scanner_thread') and self.arp_scanner_thread.isRunning():
+        if self.arp_scanner_thread is not None and self.arp_scanner_thread.isRunning():
             print("Scan is already in progress.")
             return
 
         # Create and start a new ARP scan thread
         self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup)
-        
         # Connect signals to handle thread completion and verbose output
         self.arp_scanner_thread.finished.connect(self.handle_scan_results)
         self.arp_scanner_thread.verbose_output.connect(self.update_tab7_verbose_output)
-        
         # Start the thread
         self.arp_scanner_thread.start()
         print("Started ARP scan.")
@@ -253,7 +252,6 @@ class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
             print(f"Error during ARP scan: {e}")
             self.finished.emit([])
             return
-        
         for _, packet in enumerate(arp_packets):
             if packet[1].haslayer(ARP):
                 ip_address = packet[1][ARP].psrc
