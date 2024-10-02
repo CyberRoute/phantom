@@ -55,22 +55,12 @@ Ensure the following dependencies are installed:
 
 2. **Install the dependencies with Pipenv**:
 
-    Install `pipenv` if it's not already installed:
+    Install `pip` if it's not already installed:
 
     ```bash
-    sudo pip install pipenv
-    ```
-
-    Then, use `pipenv` to create the virtual environment and install the required dependencies:
-
-    ```bash
-    sudo pipenv install
-    ```
-
-    To activate the virtual environment:
-
-    ```bash
-    sudo pipenv shell
+    virtualenv env
+    source env/bin/activate
+    pip install -r requirements.txt
     ```
 
 3. **Run the application**:
@@ -78,12 +68,25 @@ Ensure the following dependencies are installed:
     Run the ARP Scanner using the following command. You need to provide the network interface (like `eth0`, `wlan0`, or `wlp0s20f3`) for your system:
 
     ```bash
-    sudo pipenv run python3 main.py --interface <interface>
+    sudo `which python3` main.py --interface <interface>
     ```
 
     Example:
     ```bash
-    sudo pipenv run python3 main.py --interface wlp0s20f3
+    sudo `which python3` main.py --interface wlp0s20f3
+    ```
+
+    On Ubuntu in case you run into this error:
+    ```
+    (env) alessandro@alessandro-XPS-9315:~/Development/phantom$ sudo /home/alessandro/Development/phantom/env/bin/python3 main.py --interface wlp0s20f3
+    qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
+    qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+    This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+    Available platform plugins are: eglfs, minimal, wayland, vkkhrdisplay, offscreen, linuxfb, xcb, wayland-egl, minimalegl, vnc.
+    ```
+    Solution:
+    ```
+    sudo apt install libxcb-cursor0
     ```
 
 ## Usage Instructions
