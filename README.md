@@ -27,14 +27,14 @@ The tool features a graphical user interface (GUI) built with **PySide6** (Qt fr
 
 Ensure the following dependencies are installed:
 
-1. **Python 3.8 or higher**
+1. **Python 3.12 or higher**
 2. **scapy**: Used for ARP scanning.
 3. **PySide6 or PyQt6**: For building the GUI.
 4. **netifaces**: To retrieve network interface details.
 
 ## Requirements
 
-- **Python 3.8+**
+- **Python 3.12+**
 - **pipenv**: For managing the virtual environment and dependencies.
 - **scapy**: For ARP scanning and packet manipulation.
 - **PySide6**: For building the graphical user interface.
