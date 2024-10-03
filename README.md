@@ -104,15 +104,11 @@ Ensure the following dependencies are installed:
     - Click on the **"Scan"** button in the UI to initiate a network scan.
     - The tool will display a list of all detected devices in the network, including their IP addresses, MAC addresses, hostnames, and vendors.
 
-3. **Viewing Packets**:
-
-    - The tool also captures ARP packets in real-time. You can view these packets in a separate tab within the GUI.
-
-4. **Device Details**:
+3. **Device Details**:
 
     - Click on any device in the list to open a detailed window that shows more information about that particular device.
 
-5. **Stopping the Scan**:
+4. **Stopping the Scan**:
 
     - Press the **"Quit"** button to stop the ARP scan and close the application.
 

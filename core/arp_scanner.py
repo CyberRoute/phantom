@@ -90,8 +90,26 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         os_label = QLabel(f"OS: {get_os()}")
         os_label.setStyleSheet("color: black")
 
+        # Adding additional network info
+        local_ip_address = get_if_addr(self.interface)
+        local_ip_label = QLabel(f"Local IP Address: {local_ip_address}")
+        local_ip_label.setStyleSheet("color: black")
+
+        # Corrected variable name to get the default gateway correctly
+        default_gateway = netifaces.gateways()[2][0][0]
+        default_gateway_label = QLabel(f"Default Gateway: {default_gateway}")
+        default_gateway_label.setStyleSheet("color: black")
+
+        local_mac_address = netifaces.ifaddresses(self.interface)[netifaces.AF_LINK][0]['addr']
+        local_mac_label = QLabel(f"Local MAC Address: {local_mac_address}")
+        local_mac_label.setStyleSheet("color: black")
+
+        # Add labels to the vertical layout
         self._ui.verticalLayout.addWidget(os_label)
         self._ui.verticalLayout.addWidget(interface_label)
+        self._ui.verticalLayout.addWidget(local_ip_label)
+        self._ui.verticalLayout.addWidget(default_gateway_label)
+        self._ui.verticalLayout.addWidget(local_mac_label)
 
     def setup_font_for_list_widgets(self):
         """Sets up a uniform font for list widgets."""
