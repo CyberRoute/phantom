@@ -88,18 +88,6 @@
      </item>
     </layout>
    </item>
-   <item>
-    <widget class="QTabWidget" name="tabWidget">
-     <property name="currentIndex">
-      <number>0</number>
-     </property>
-     <widget class="QWidget" name="tab_1">
-      <attribute name="title">
-       <string>Arp Traffic</string>
-      </attribute>
-     </widget>
-    </widget>
-   </item>
   </layout>
  </widget>
  <resources/>

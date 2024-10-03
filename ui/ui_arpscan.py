@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'arpscan.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.6.1
+## Created by: Qt User Interface Compiler version 6.7.3
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -17,8 +17,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QGroupBox,
     QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-    QPushButton, QSizePolicy, QTabWidget, QVBoxLayout,
-    QWidget)
+    QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
 class Ui_DeviceDiscovery(object):
     def setupUi(self, DeviceDiscovery):
@@ -86,21 +85,10 @@ class Ui_DeviceDiscovery(object):
 
         self.verticalLayout.addLayout(self.horizontalLayout)
 
-        self.tabWidget = QTabWidget(DeviceDiscovery)
-        self.tabWidget.setObjectName(u"tabWidget")
-        self.tab_1 = QWidget()
-        self.tab_1.setObjectName(u"tab_1")
-        self.tabWidget.addTab(self.tab_1, "")
-
-        self.verticalLayout.addWidget(self.tabWidget)
-
 
         self.retranslateUi(DeviceDiscovery)
         self.quit.clicked.connect(DeviceDiscovery.accept)
         self.clear.clicked.connect(self.list.clear)
-
-        self.tabWidget.setCurrentIndex(0)
-
 
         QMetaObject.connectSlotsByName(DeviceDiscovery)
     # setupUi
@@ -115,6 +103,5 @@ class Ui_DeviceDiscovery(object):
         self.scan.setText(QCoreApplication.translate("DeviceDiscovery", u"Scan", None))
         self.clear.setText(QCoreApplication.translate("DeviceDiscovery", u"Clear", None))
         self.quit.setText(QCoreApplication.translate("DeviceDiscovery", u"Quit", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_1), QCoreApplication.translate("DeviceDiscovery", u"Arp Traffic", None))
     # retranslateUi
 

@@ -99,7 +99,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         font.setPointSize(12)
         self._ui.list.setFont(font)
         self._ui.listpkt.setFont(font)
-        self._ui.tab_1.setFont(font)
 
     @Slot(QListWidgetItem)
     def open_device_details(self, item):
