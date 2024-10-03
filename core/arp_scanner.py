@@ -13,7 +13,7 @@ from PySide6.QtWidgets import ( # pylint: disable=E0611
     QListWidgetItem
 )
 from PySide6.QtGui import QIcon, QFont, QColor # pylint: disable=E0611
-from PySide6.QtCore import Slot, Qt, QThreadPool, QTimer # pylint: disable=E0611
+from PySide6.QtCore import Slot, Qt, QTimer # pylint: disable=E0611
 from PyQt6.QtCore import QThread, pyqtSignal # pylint: disable=E0611
 from ui.ui_arpscan import Ui_DeviceDiscovery
 from core import vendor
@@ -59,10 +59,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         # Initialize the UI and connection setup
         self.setup_ui_elements()
 
-        # Threadpool for multi-threading
-        self.threadpool = QThreadPool()
-        print(f"Multithreading with maximum {self.threadpool.maxThreadCount()} threads")
-
         # Initialize scanner and device info storage
         self.scanner_timer = None
         self.device_info = {}  # Store dynamic device info here
@@ -79,6 +75,9 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         # Add static labels and list widgets
         self.add_static_ui_labels()
         self.add_list_widget_to_tab_1()
+
+         # Connect item click signal to open_device_details
+        self._ui.list.itemClicked.connect(self.open_device_details)
 
         # Set the default font for the list items
         self.setup_font_for_list_widgets()
@@ -167,7 +166,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup)
         # Connect signals to handle thread completion and verbose output
         self.arp_scanner_thread.finished.connect(self.handle_scan_results)
-        self.arp_scanner_thread.verbose_output.connect(self.update_tab7_verbose_output)
         # Start the thread
         self.arp_scanner_thread.start()
         print("Started ARP scan.")
@@ -202,22 +200,12 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
             packet_item.setForeground(QColor(Qt.white))
             self._ui.listpkt.addItem(packet_item)
 
-    @Slot(str)
-    def update_tab7_verbose_output(self, verbose_output):
-        """Updates the list_widget_tab7 with verbose output."""
-        for line in verbose_output.splitlines():
-            if line.strip():  # Skip empty lines
-                packet_item = QListWidgetItem(line)
-                packet_item.setBackground(QColor(Qt.black))
-                packet_item.setForeground(QColor(Qt.white))
-                self.list_widget_tab7.addItem(packet_item)
-
     def quit_application(self):
         """Quit the application."""
         self._ui.quit.setEnabled(False)
         net.disable_ip_forwarding()
         # Stop any running threads safely
-        if hasattr(self, 'arp_scanner_thread') and self.arp_scanner_thread.isRunning():
+        if self.arp_scanner_thread is not None:
             self.arp_scanner_thread.terminate()
             self.arp_scanner_thread.wait()
         QTimer.singleShot(2000, self.close)
@@ -226,8 +214,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
 class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
     """Executing arp scan in separate thread"""
     finished = pyqtSignal(list)
-    progress_updated = pyqtSignal(int)
-    verbose_output = pyqtSignal(str)  # Signal to emit verbose output
 
     def __init__(self, interface, mac_vendor_lookup, timeout=1):
         super().__init__()
