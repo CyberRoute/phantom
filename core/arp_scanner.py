@@ -74,7 +74,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
 
         # Add static labels and list widgets
         self.add_static_ui_labels()
-        self.add_list_widget_to_tab_1()
 
          # Connect item click signal to open_device_details
         self._ui.list.itemClicked.connect(self.open_device_details)
@@ -94,12 +93,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
 
         self._ui.verticalLayout.addWidget(os_label)
         self._ui.verticalLayout.addWidget(interface_label)
-
-    def add_list_widget_to_tab_1(self):
-        """Adds a QListWidget to the first tab of the UI."""
-        self.list_widget_tab7 = QListWidget() # pylint: disable=attribute-defined-outside-init
-        tab7_layout = QVBoxLayout(self._ui.tab_1)
-        tab7_layout.addWidget(self.list_widget_tab7)
 
     def setup_font_for_list_widgets(self):
         """Sets up a uniform font for list widgets."""
