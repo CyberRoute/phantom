@@ -9,7 +9,6 @@ from PySide6.QtWidgets import ( # pylint: disable=E0611
     QLabel,
     QWidget,
     QDialog,
-    QListWidget,
     QListWidgetItem
 )
 from PySide6.QtGui import QIcon, QFont, QColor # pylint: disable=E0611
