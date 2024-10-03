@@ -75,7 +75,7 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         self.add_static_ui_labels()
 
          # Connect item click signal to open_device_details
-        self._ui.list.itemClicked.connect(self.open_device_details)
+        self._ui.devices.itemClicked.connect(self.open_device_details)
 
         # Set the default font for the list items
         self.setup_font_for_list_widgets()
@@ -97,8 +97,8 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         """Sets up a uniform font for list widgets."""
         font = QFont()
         font.setPointSize(12)
-        self._ui.list.setFont(font)
-        self._ui.listpkt.setFont(font)
+        self._ui.devices.setFont(font)
+        self._ui.responses.setFont(font)
 
     @Slot(QListWidgetItem)
     def open_device_details(self, item):
@@ -176,20 +176,20 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
     def add_device_to_list(self, ip_address, mac, hostname, device_vendor):
         """Adds a device to the list widget in the UI."""
         label = f"{ip_address} {mac} {hostname}, {device_vendor}"
-        if not self._ui.list.findItems(label, Qt.MatchExactly):
+        if not self._ui.devices.findItems(label, Qt.MatchExactly):
             item = QListWidgetItem(label)
             item.setBackground(QColor(Qt.black))
             item.setForeground(QColor(Qt.white))
-            self._ui.list.addItem(item)
+            self._ui.devices.addItem(item)
 
     def add_packet_if_new(self, packet_label):
         """Adds a packet to the listpkt widget if it doesn't already exist."""
-        existing_items = self._ui.listpkt.findItems(packet_label, Qt.MatchExactly)
+        existing_items = self._ui.responses.findItems(packet_label, Qt.MatchExactly)
         if not existing_items:  # Add only if the packet is not already listed
             packet_item = QListWidgetItem(packet_label)
             packet_item.setBackground(QColor(Qt.black))
             packet_item.setForeground(QColor(Qt.white))
-            self._ui.listpkt.addItem(packet_item)
+            self._ui.responses.addItem(packet_item)
 
     def quit_application(self):
         """Quit the application."""

@@ -22,7 +22,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="list"/>
+    <widget class="QListWidget" name="devices"/>
    </item>
    <item>
     <widget class="QLabel" name="label_2">
@@ -32,7 +32,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="listpkt"/>
+    <widget class="QListWidget" name="responses"/>
    </item>
    <item>
     <widget class="QGroupBox" name="groupBox">
@@ -111,7 +111,7 @@
   <connection>
    <sender>clear</sender>
    <signal>clicked()</signal>
-   <receiver>list</receiver>
+   <receiver>devices</receiver>
    <slot>clear()</slot>
    <hints>
     <hint type="sourcelabel">

@@ -31,20 +31,20 @@ class Ui_DeviceDiscovery(object):
 
         self.verticalLayout.addWidget(self.label)
 
-        self.list = QListWidget(DeviceDiscovery)
-        self.list.setObjectName(u"list")
+        self.devices = QListWidget(DeviceDiscovery)
+        self.devices.setObjectName(u"devices")
 
-        self.verticalLayout.addWidget(self.list)
+        self.verticalLayout.addWidget(self.devices)
 
         self.label_2 = QLabel(DeviceDiscovery)
         self.label_2.setObjectName(u"label_2")
 
         self.verticalLayout.addWidget(self.label_2)
 
-        self.listpkt = QListWidget(DeviceDiscovery)
-        self.listpkt.setObjectName(u"listpkt")
+        self.responses = QListWidget(DeviceDiscovery)
+        self.responses.setObjectName(u"responses")
 
-        self.verticalLayout.addWidget(self.listpkt)
+        self.verticalLayout.addWidget(self.responses)
 
         self.groupBox = QGroupBox(DeviceDiscovery)
         self.groupBox.setObjectName(u"groupBox")
@@ -88,7 +88,7 @@ class Ui_DeviceDiscovery(object):
 
         self.retranslateUi(DeviceDiscovery)
         self.quit.clicked.connect(DeviceDiscovery.accept)
-        self.clear.clicked.connect(self.list.clear)
+        self.clear.clicked.connect(self.devices.clear)
 
         QMetaObject.connectSlotsByName(DeviceDiscovery)
     # setupUi
