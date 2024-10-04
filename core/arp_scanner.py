@@ -67,8 +67,8 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         """Sets up the UI elements and connections."""
         self.setWindowIcon(QIcon("images/phantom_logo.png"))
 
-        self._ui.scan.clicked.connect(self.toggle_scan)
-        net.enable_ip_forwarding()
+        self._ui.scan.clicked.connect(self.start_scan)
+        #net.enable_ip_forwarding()
         self._ui.quit.clicked.connect(self.quit_application)
 
         # Add static labels and list widgets
@@ -212,12 +212,12 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
     def quit_application(self):
         """Quit the application."""
         self._ui.quit.setEnabled(False)
-        net.disable_ip_forwarding()
+        #net.disable_ip_forwarding()
         # Stop any running threads safely
         if self.arp_scanner_thread is not None:
-            self.arp_scanner_thread.terminate()
+            self.arp_scanner_thread.quit()
             self.arp_scanner_thread.wait()
-        QTimer.singleShot(2000, self.close)
+        self.close()
 
 
 class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
