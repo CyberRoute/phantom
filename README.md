@@ -35,7 +35,6 @@ Ensure the following dependencies are installed:
 ## Requirements
 
 - **Python 3.12+**
-- **pipenv**: For managing the virtual environment and dependencies.
 - **scapy**: For ARP scanning and packet manipulation.
 - **PySide6**: For building the graphical user interface.
 - **netifaces**: To retrieve network interface details.

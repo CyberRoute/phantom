@@ -247,11 +247,10 @@ class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
             print(f"Error during ARP scan: {e}")
             self.finished.emit([])
             return
-        for _, packet in enumerate(arp_packets):
-            if packet[1].haslayer(ARP):
-                ip_address = packet[1][ARP].psrc
-                mac = packet[1][ARP].hwsrc
-                device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
-                hostname = net.get_hostname(ip_address)
-                arp_results.append((ip_address, mac, hostname, device_vendor, packet[1][ARP]))
+        for packet in arp_packets:
+            ip_address = packet[1][ARP].psrc
+            mac = packet[1][ARP].hwsrc
+            device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
+            hostname = net.get_hostname(ip_address)
+            arp_results.append((ip_address, mac, hostname, device_vendor, packet[1][ARP]))
         self.finished.emit(arp_results)
