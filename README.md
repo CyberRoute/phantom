@@ -17,10 +17,9 @@ The tool features a graphical user interface (GUI) built with **PySide6** (Qt fr
 ## Features
 - **Network Scanning**: Identifies devices on the network via ARP requests.
 - **Device Details**: Displays IP address, MAC address, hostname, and vendor information.
-- **Real-time Sniffing**: Captures and lists ARP packets in real-time.
 - **Graphical User Interface**: Easy-to-use UI to display the scanned devices and packet information.
 - **Multithreading**: Ensures non-blocking scans using Python's `QThread`.
-
+- **C extension**: for MacOSX there is a C extension that allows slow sequential but very accurate arp scanning
 ---
 
 ## Prerequisites
@@ -29,7 +28,7 @@ Ensure the following dependencies are installed:
 
 1. **Python 3.12 or higher**
 2. **scapy**: Used for ARP scanning.
-3. **PySide6 or PyQt6**: For building the GUI.
+3. **PySide6**: For building the GUI.
 4. **netifaces**: To retrieve network interface details.
 
 ## Requirements
@@ -70,11 +69,6 @@ Ensure the following dependencies are installed:
     sudo `which python3` main.py --interface <interface>
     ```
 
-    Example:
-    ```bash
-    sudo `which python3` main.py --interface wlp0s20f3
-    ```
-
     On Ubuntu in case you run into this error:
     ```
     (env) alessandro@alessandro-XPS-9315:~/Development/phantom$ sudo /home/alessandro/Development/phantom/env/bin/python3 main.py --interface wlp0s20f3
@@ -86,6 +80,13 @@ Ensure the following dependencies are installed:
     Solution:
     ```
     sudo apt install libxcb-cursor0
+    ```
+    On Macos there is a C extension that allows accurate but slow arpscan. To build and install the extension:
+    ```
+    pip install setuptools
+    cd c_extension
+    python setup.py build
+    python setup.py install
     ```
 
 ## Usage Instructions

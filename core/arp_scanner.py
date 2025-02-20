@@ -1,6 +1,7 @@
 """
 Module Arp Scanner
 """
+import ipaddress
 import netifaces
 from scapy.all import arping, ARP, get_if_addr # pylint: disable=E0611
 from PySide6.QtWidgets import ( # pylint: disable=E0611
@@ -13,11 +14,17 @@ from PySide6.QtWidgets import ( # pylint: disable=E0611
 )
 from PySide6.QtGui import QIcon, QFont, QColor # pylint: disable=E0611
 from PySide6.QtCore import Slot, Qt, QTimer # pylint: disable=E0611
-from PyQt6.QtCore import QThread, pyqtSignal # pylint: disable=E0611
+from PySide6.QtCore import QThread, Signal # pylint: disable=E0611
 from ui.ui_arpscan import Ui_DeviceDiscovery
 from core import vendor
 from core.platform import get_os
 import core.networking as net
+
+try:
+    import arpscanner
+    NATIVE_ARP_AVAILABLE = True
+except ImportError:
+    NATIVE_ARP_AVAILABLE = False
 
 
 class DeviceDetailsWindow(QMainWindow): # pylint: disable=too-few-public-methods
@@ -173,11 +180,15 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
 
         # Create and start a new ARP scan thread
         self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup)
-        # Connect signals to handle thread completion and verbose output
+        self.arp_scanner_thread.partialResults.connect(self.handle_partial_results)
         self.arp_scanner_thread.finished.connect(self.handle_scan_results)
-        # Start the thread
         self.arp_scanner_thread.start()
         print("Started ARP scan.")
+    
+    @Slot(list)
+    def handle_partial_results(self, partial_results):
+        for ip_address, mac, hostname, device_vendor, packet in partial_results:
+            self.add_device_to_list(ip_address, mac, hostname, device_vendor)
 
     @Slot(list)
     def handle_scan_results(self, results):
@@ -189,7 +200,6 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
             # Add packet to the packet list if not already present
             packet_label = str(packet)
             self.add_packet_if_new(packet_label)
-
 
     def add_device_to_list(self, ip_address, mac, hostname, device_vendor):
         """Adds a device to the list widget in the UI."""
@@ -219,38 +229,79 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
             self.arp_scanner_thread.wait()
         self.close()
 
-
-class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
-    """Executing arp scan in separate thread"""
-    finished = pyqtSignal(list)
+class ARPScannerThread(QThread):
+    finished = Signal(list)         # Final results
+    partialResults = Signal(list)   # Intermediate results
 
     def __init__(self, interface, mac_vendor_lookup, timeout=1):
         super().__init__()
         self.interface = interface
         self.mac_vendor_lookup = mac_vendor_lookup
         self.timeout = timeout
+        self.is_macos = get_os() == 'mac'
+        self.use_native = self.is_macos and NATIVE_ARP_AVAILABLE
+
+    def _scan_ip_native(self, src_ip, target_ip):
+        try:
+            result = arpscanner.perform_arp_scan(
+                self.interface,
+                str(src_ip),
+                str(target_ip),
+                int(self.timeout * 300)  # 300ms timeout per scan
+            )
+            return target_ip, result
+        except Exception as e:
+            print(f"Error scanning {target_ip}: {e}")
+            return target_ip, None
+
+    def _create_arp_response(self, ip_addr, mac):
+        return type('ARPResponse', (), {
+            'psrc': ip_addr,
+            'hwsrc': mac,
+            '__str__': lambda self: f"ARP {self.psrc} is-at {self.hwsrc}"
+        })()
 
     def run(self):
-        "run the scan"
-        ip_address = get_if_addr(self.interface)
+        src_ip = get_if_addr(self.interface)
         try:
             netmask = netifaces.ifaddresses(self.interface)[netifaces.AF_INET][0]['netmask']
-            network = net.calculate_network_cidr(ip_address, netmask)
+            network_cidr = net.calculate_network_cidr(src_ip, netmask)
         except KeyError:
             self.finished.emit([])
             return
 
         arp_results = []
-        try:
-            arp_packets = arping(network, timeout=self.timeout, verbose=1)[0]
-        except Exception as e: # pylint: disable=broad-exception-caught
-            print(f"Error during ARP scan: {e}")
-            self.finished.emit([])
-            return
-        for packet in arp_packets:
-            ip_address = packet[1][ARP].psrc
-            mac = packet[1][ARP].hwsrc
-            device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
-            hostname = net.get_hostname(ip_address)
-            arp_results.append((ip_address, mac, hostname, device_vendor, packet[1][ARP]))
-        self.finished.emit(arp_results)
+        if self.use_native:
+            print("Using native ARP scanner")
+            network = ipaddress.IPv4Network(network_cidr)
+            count = 0
+            for ip in network.hosts():
+                if str(ip) == src_ip:
+                    continue  # Skip scanning our own IP
+                target_ip, result = self._scan_ip_native(src_ip, str(ip))
+                if result:
+                    device_vendor = self.mac_vendor_lookup.lookup_vendor(result['mac'])
+                    hostname = net.get_hostname(target_ip)
+                    arp_response = self._create_arp_response(target_ip, result['mac'])
+                    arp_results.append((target_ip, result['mac'], hostname, device_vendor, arp_response))
+                count += 1
+                # Every 10 IPs (or any chosen interval), emit partial results
+                if count % 10 == 0:
+                    self.partialResults.emit(arp_results)
+            self.finished.emit(arp_results)
+        else:
+            print("Using Scapy ARP scanner")
+            try:
+                arp_packets = arping(network_cidr, timeout=self.timeout, verbose=1)[0]
+            except Exception as e:
+                print(f"Error during ARP scan: {e}")
+                self.finished.emit([])
+                return
+
+            for packet in arp_packets:
+                ip_addr = packet[1][ARP].psrc
+                mac = packet[1][ARP].hwsrc
+                device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
+                hostname = net.get_hostname(ip_addr)
+                arp_results.append((ip_addr, mac, hostname, device_vendor, packet[1][ARP]))
+            self.finished.emit(arp_results)
