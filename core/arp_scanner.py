@@ -3,14 +3,15 @@ Module Arp Scanner
 """
 import ipaddress
 import netifaces
-from scapy.all import arping, ARP, get_if_addr # pylint: disable=E0611
+from scapy.all import arping, ARP, get_if_addr, srp, Ether# pylint: disable=E0611
 from PySide6.QtWidgets import ( # pylint: disable=E0611
     QMainWindow,
     QVBoxLayout,
     QLabel,
     QWidget,
     QDialog,
-    QListWidgetItem
+    QListWidgetItem,
+    QProgressBar
 )
 from PySide6.QtGui import QIcon, QFont, QColor # pylint: disable=E0611
 from PySide6.QtCore import Slot, Qt, QTimer # pylint: disable=E0611
@@ -54,16 +55,24 @@ class DeviceDetailsWindow(QMainWindow): # pylint: disable=too-few-public-methods
 
 class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attributes
     """Device Discovery"""
-    def __init__(self, interface, oui_url, parent=None):
+    def __init__(self, interface, oui_url, timeout=1000, parent=None):
         super().__init__(parent)
         self.interface = interface
         self.mac_vendor_lookup = vendor.MacVendorLookup(oui_url)
+        self.timeout = timeout
 
         self._ui = Ui_DeviceDiscovery()
         self._ui.setupUi(self)
 
         # Initialize the UI and connection setup
         self.setup_ui_elements()
+
+         # Add a progress bar to the UI
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setRange(0, 100)
+        self.progressBar.setValue(0)
+        # Add it to the vertical layout (or any layout of your choice)
+        self._ui.verticalLayout.addWidget(self.progressBar)
 
         # Initialize scanner and device info storage
         self.scanner_timer = None
@@ -118,12 +127,21 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
         self._ui.verticalLayout.addWidget(default_gateway_label)
         self._ui.verticalLayout.addWidget(local_mac_label)
 
+        # Add timeout information
+        timeout_label = QLabel(f"Scan Timeout: {self.timeout}ms")
+        timeout_label.setStyleSheet("color: black")
+        self._ui.verticalLayout.addWidget(timeout_label)
+
     def setup_font_for_list_widgets(self):
         """Sets up a uniform font for list widgets."""
         font = QFont()
         font.setPointSize(12)
         self._ui.devices.setFont(font)
         self._ui.responses.setFont(font)
+
+    @Slot(int)
+    def update_progress(self, progress):
+        self.progressBar.setValue(progress)
 
     @Slot(QListWidgetItem)
     def open_device_details(self, item):
@@ -172,19 +190,19 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
 
     @Slot()
     def start_scan(self):
-        """Starts scanning the network."""
         # Check if there's already a running scan, and don't start another one
         if self.arp_scanner_thread is not None and self.arp_scanner_thread.isRunning():
             print("Scan is already in progress.")
             return
 
         # Create and start a new ARP scan thread
-        self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup)
+        self.arp_scanner_thread = ARPScannerThread(self.interface, self.mac_vendor_lookup, self.timeout/1000)
         self.arp_scanner_thread.partialResults.connect(self.handle_partial_results)
         self.arp_scanner_thread.finished.connect(self.handle_scan_results)
+        self.arp_scanner_thread.progressChanged.connect(self.update_progress)  # New connection
         self.arp_scanner_thread.start()
-        print("Started ARP scan.")
-    
+        print(f"Started ARP scan with timeout: {self.timeout}ms")
+
     @Slot(list)
     def handle_partial_results(self, partial_results):
         for ip_address, mac, hostname, device_vendor, packet in partial_results:
@@ -232,6 +250,7 @@ class DeviceDiscoveryDialog(QDialog): # pylint: disable=too-many-instance-attrib
 class ARPScannerThread(QThread):
     finished = Signal(list)         # Final results
     partialResults = Signal(list)   # Intermediate results
+    progressChanged = Signal(int)   # New signal for progress (0-100%)
 
     def __init__(self, interface, mac_vendor_lookup, timeout=1):
         super().__init__()
@@ -247,7 +266,7 @@ class ARPScannerThread(QThread):
                 self.interface,
                 str(src_ip),
                 str(target_ip),
-                int(self.timeout * 300)  # 300ms timeout per scan
+                int(self.timeout * 1000)  # Convert to ms
             )
             return target_ip, result
         except Exception as e:
@@ -262,6 +281,7 @@ class ARPScannerThread(QThread):
         })()
 
     def run(self):
+
         src_ip = get_if_addr(self.interface)
         try:
             netmask = netifaces.ifaddresses(self.interface)[netifaces.AF_INET][0]['netmask']
@@ -271,37 +291,44 @@ class ARPScannerThread(QThread):
             return
 
         arp_results = []
+        network = ipaddress.IPv4Network(network_cidr)
         if self.use_native:
             print("Using native ARP scanner")
-            network = ipaddress.IPv4Network(network_cidr)
+            hosts = [str(ip) for ip in network.hosts() if str(ip) != src_ip]
+            total = len(hosts)
             count = 0
-            for ip in network.hosts():
-                if str(ip) == src_ip:
-                    continue  # Skip scanning our own IP
-                target_ip, result = self._scan_ip_native(src_ip, str(ip))
+            for ip in hosts:
+                target_ip, result = self._scan_ip_native(src_ip, ip)
                 if result:
                     device_vendor = self.mac_vendor_lookup.lookup_vendor(result['mac'])
                     hostname = net.get_hostname(target_ip)
                     arp_response = self._create_arp_response(target_ip, result['mac'])
                     arp_results.append((target_ip, result['mac'], hostname, device_vendor, arp_response))
                 count += 1
-                # Every 10 IPs (or any chosen interval), emit partial results
+                self.progressChanged.emit(int((count / total) * 100))
                 if count % 10 == 0:
                     self.partialResults.emit(arp_results)
             self.finished.emit(arp_results)
         else:
-            print("Using Scapy ARP scanner")
-            try:
-                arp_packets = arping(network_cidr, timeout=self.timeout, verbose=1)[0]
-            except Exception as e:
-                print(f"Error during ARP scan: {e}")
-                self.finished.emit([])
-                return
-
-            for packet in arp_packets:
-                ip_addr = packet[1][ARP].psrc
-                mac = packet[1][ARP].hwsrc
-                device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
-                hostname = net.get_hostname(ip_addr)
-                arp_results.append((ip_addr, mac, hostname, device_vendor, packet[1][ARP]))
+            print("Using Scapy ARP scanner with progress updates")
+            hosts = [str(ip) for ip in network.hosts() if str(ip) != src_ip]
+            total = len(hosts)
+            count = 0
+            for ip in hosts:
+                try:
+                    ans, _ = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=ip),
+                                timeout=self.timeout, verbose=0)
+                    if ans:
+                        for sent, received in ans:
+                            ip_addr = received.psrc
+                            mac = received.hwsrc
+                            device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
+                            hostname = net.get_hostname(ip_addr)
+                            arp_results.append((ip_addr, mac, hostname, device_vendor, received))
+                except Exception as e:
+                    print(f"Error scanning {ip}: {e}")
+                count += 1
+                self.progressChanged.emit(int((count / total) * 100))
+                if count % 10 == 0:
+                    self.partialResults.emit(arp_results)
             self.finished.emit(arp_results)
