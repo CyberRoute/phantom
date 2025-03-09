@@ -321,12 +321,13 @@ class ARPScannerThread(QThread): # pylint: disable=too-few-public-methods
                 device_vendor = self.mac_vendor_lookup.lookup_vendor(result['mac'])
                 hostname = net.get_hostname(target_ip)
                 arp_response = self._create_arp_response(target_ip, result['mac'])
-                arp_results.append(target_ip,
-                                   result['mac'],
-                                   hostname,
-                                   device_vendor,
-                                   arp_response
-                                   )
+                arp_results.append(
+                    (target_ip,
+                     result['mac'],
+                     hostname,
+                     device_vendor,
+                     arp_response)
+                     )
             self._update_progress(count, total, arp_results)
         return arp_results
 
