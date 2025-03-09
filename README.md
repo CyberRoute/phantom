@@ -66,7 +66,7 @@ Ensure the following dependencies are installed:
     Run the ARP Scanner using the following command. You need to provide the network interface (like `eth0`, `wlan0`, or `wlp0s20f3`) for your system:
 
     ```bash
-    sudo `which python3` main.py --interface <interface>
+    sudo `which python3` main.py --interface <interface> --timeout 500
     ```
 
     On Ubuntu in case you run into this error:
