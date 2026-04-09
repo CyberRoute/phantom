@@ -10,7 +10,8 @@ from PySide6.QtCore import QThread, Signal  # pylint: disable=E0611
 OLLAMA_URL = "http://localhost:11434/api/generate"
 DEFAULT_MODEL = "llama3.2:1b"
 
-SYSTEM_PROMPT = """You are an IoT security researcher specialising in vulnerability discovery on embedded and smart devices.
+SYSTEM_PROMPT = """You are an IoT security researcher specialising in vulnerability discovery
+on embedded and smart devices.
 You will be given a decoded network packet captured during a MITM session against an IoT or specialised device.
 Analyse it and report concisely:
 - Device type / firmware fingerprint clues (banner, UA, protocol quirks)
