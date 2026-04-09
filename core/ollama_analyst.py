@@ -35,22 +35,37 @@ class OllamaThread(QThread):
         self,
         packet_text: str,
         user_context: str = "",
+        device_vendor: str = "",
+        hostname: str = "",
         model: str = DEFAULT_MODEL,
         parent=None,
     ):
         super().__init__(parent)
         self.packet_text = packet_text
         self.user_context = user_context
+        self.device_vendor = device_vendor
+        self.hostname = hostname
         self.model = model
 
     def run(self):
         """Stream LLM analysis of the packet to the token signal."""
+        device_section = ""
+        if self.device_vendor or self.hostname:
+            device_section = "\nDevice under analysis:"
+            if self.hostname:
+                device_section += f"\n  Hostname : {self.hostname}"
+            if self.device_vendor:
+                device_section += f"\n  Vendor   : {self.device_vendor}"
+            device_section += "\n"
+
         context_section = (
             f"\nAdditional context from analyst:\n{self.user_context}\n"
             if self.user_context
             else ""
         )
-        prompt = f"{SYSTEM_PROMPT}\n{context_section}\nPacket:\n{self.packet_text}"
+        prompt = (
+            f"{SYSTEM_PROMPT}\n{device_section}{context_section}\nPacket:\n{self.packet_text}"
+        )
         payload = {
             "model": self.model,
             "prompt": prompt,

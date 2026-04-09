@@ -58,6 +58,8 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         self.ip_address = ip_address
         self.interface = interface
         self.gateway_ip = gateway_ip
+        self._device_vendor = device_vendor
+        self._hostname = hostname
         self._mitm: MitmThread | None = None
 
         layout = QVBoxLayout()
@@ -216,7 +218,12 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
 
         pkt_text = _format_packet(self._captured_packets[row])
         user_context = self._user_context.text().strip()
-        self._ollama_thread = OllamaThread(pkt_text, user_context=user_context)
+        self._ollama_thread = OllamaThread(
+            pkt_text,
+            user_context=user_context,
+            device_vendor=self._device_vendor,
+            hostname=self._hostname,
+        )
         self._ollama_thread.token.connect(self._on_llm_token)
         self._ollama_thread.error.connect(self._on_llm_error)
         self._ollama_thread.finished.connect(self._on_llm_finished)
