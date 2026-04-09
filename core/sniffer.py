@@ -1,6 +1,6 @@
 """Module Sniffer"""
 
-from PyQt6.QtCore import QObject, pyqtSignal as Signal # pylint: disable=E0611
+from PySide6.QtCore import QObject, Signal  # pylint: disable=E0611
 import scapy.all as scapy
 
 

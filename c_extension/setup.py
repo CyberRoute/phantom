@@ -1,6 +1,8 @@
-from setuptools import setup, Extension
-import sysconfig
+"""Build configuration for the native arpscanner C extension."""
 import os
+import sysconfig
+
+from setuptools import setup, Extension  # pylint: disable=import-error
 
 # For macOS, we need to explicitly include libpcap
 extra_compile_args = []

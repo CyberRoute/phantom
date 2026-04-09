@@ -1,3 +1,13 @@
 [MASTER]
 init-hook='import sys; sys.path.append(".")'
-extension-pkg-allow-list=netifaces
+extension-pkg-allow-list=netifaces,scapy,setuptools
+
+[DESIGN]
+max-args=11
+max-positional-arguments=11
+max-attributes=15
+max-locals=18
+max-statements=80
+
+[MESSAGES CONTROL]
+disable=too-few-public-methods,import-outside-toplevel
