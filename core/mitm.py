@@ -20,9 +20,9 @@ def _pf_enable_forwarding():
     try:
         # Back up the current ruleset so we can restore it later
         result = subprocess.run(
-            ["pfctl", "-s", "rules"], capture_output=True, text=True
+            ["pfctl", "-s", "rules"], capture_output=True, text=True, check=False
         )
-        _pf_enable_forwarding._saved_rules = (
+        _pf_enable_forwarding._saved_rules = (  # pylint: disable=protected-access
             result.stdout if result.returncode == 0 else ""
         )
 
@@ -35,18 +35,18 @@ def _pf_enable_forwarding():
             capture_output=True,
         )
         # Enable pf in case it was disabled
-        subprocess.run(["pfctl", "-e"], capture_output=True)
+        subprocess.run(["pfctl", "-e"], capture_output=True, check=False)
         print("[MITM] pf set to pass all (forwarding enabled)")
     except subprocess.CalledProcessError as e:
         print(f"[MITM] pf setup failed (run as root/sudo?): {e}")
 
 
-_pf_enable_forwarding._saved_rules = ""
+_pf_enable_forwarding._saved_rules = ""  # pylint: disable=protected-access
 
 
 def _pf_disable_forwarding():
     """Restore the pf ruleset that was active before MITM started."""
-    saved = _pf_enable_forwarding._saved_rules
+    saved = _pf_enable_forwarding._saved_rules  # pylint: disable=protected-access
     try:
         if saved.strip():
             subprocess.run(
@@ -54,11 +54,12 @@ def _pf_disable_forwarding():
                 input=saved,
                 text=True,
                 capture_output=True,
+                check=False,
             )
             print("[MITM] pf ruleset restored")
         else:
             # Nothing was saved — just flush rules and disable
-            subprocess.run(["pfctl", "-F", "rules"], capture_output=True)
+            subprocess.run(["pfctl", "-F", "rules"], capture_output=True, check=False)
             print("[MITM] pf rules flushed")
     except subprocess.CalledProcessError as e:
         print(f"[MITM] pf restore failed: {e}")
@@ -95,7 +96,9 @@ def _set_ip_forwarding(enable: bool) -> bool:
                 )
             else:
                 subprocess.run(
-                    ["iptables", "-P", "FORWARD", "DROP"], capture_output=True
+                    ["iptables", "-P", "FORWARD", "DROP"],
+                    capture_output=True,
+                    check=False,
                 )  # best-effort restore, not fatal
         elif os_name == "mac":
             subprocess.run(
@@ -123,6 +126,8 @@ def _set_ip_forwarding(enable: bool) -> bool:
 
 
 class MitmThread(QThread):
+    """ARP-spoof a target/gateway pair and sniff the intercepted traffic."""
+
     packetCaptured = Signal(object)  # raw scapy packet
     statusChanged = Signal(str)
     stopped = Signal()  # emitted when fully cleaned up
@@ -138,9 +143,11 @@ class MitmThread(QThread):
         self._gateway_mac = None
 
     def stop(self):
+        """Signal the thread to stop spoofing and clean up."""
         self._running = False  # thread will clean up and emit stopped
 
     def run(self):
+        """Start the MITM attack: resolve MACs, enable forwarding, spoof and sniff."""
         self._running = True
 
         self._target_mac = _resolve_mac(self.target_ip, self.interface)
@@ -244,7 +251,7 @@ def _resolve_mac(ip: str, interface: str) -> str | None:
         pass
 
     # Explicit ARP probe — more reliable than getmacbyip() on wifi
-    from scapy.all import ARP, Ether, srp  # pylint: disable=E0611
+    from scapy.all import srp  # pylint: disable=E0611
 
     ans, _ = srp(
         Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=ip),
@@ -268,16 +275,18 @@ class _SnifferThread(QThread):
         self._running = False
 
     def stop(self):
+        """Signal the sniffer to stop."""
         self._running = False
 
     def run(self):
+        """Sniff packets from/to the target IP until stopped."""
         self._running = True
         bpf = f"host {self.target_ip} and not arp"
         while self._running:
             sniff(
                 iface=self.interface,
                 filter=bpf,
-                prn=lambda p: self.packetCaptured.emit(p),
+                prn=self.packetCaptured.emit,
                 stop_filter=lambda _: not self._running,
                 store=False,
                 timeout=1,

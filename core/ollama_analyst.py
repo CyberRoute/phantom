@@ -40,6 +40,7 @@ class OllamaThread(QThread):
         self.model = model
 
     def run(self):
+        """Stream LLM analysis of the packet to the token signal."""
         context_section = (
             f"\nAdditional context from analyst:\n{self.user_context}\n"
             if self.user_context

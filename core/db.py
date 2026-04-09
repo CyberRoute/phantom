@@ -54,8 +54,9 @@ def upsert_device(ip_address, mac_address, hostname, vendor):
 
         if existing is None:
             conn.execute(
-                """INSERT INTO devices (ip_address, mac_address, hostname, vendor, first_seen, last_seen)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                "INSERT INTO devices"
+                " (ip_address, mac_address, hostname, vendor, first_seen, last_seen)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
                 (ip_address, mac_address, hostname, vendor, now, now),
             )
             conn.execute(

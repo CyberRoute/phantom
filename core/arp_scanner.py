@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QDialog, QFileDialog,  # pylint: disable=E0611
                                QWidget)
 from scapy.all import ARP, Ether, get_if_addr, srp  # pylint: disable=E0611
 
-import core.db as db
+from core import db
 import core.networking as net
 from core import vendor
 from core.mitm import MitmThread
@@ -37,10 +37,10 @@ except ImportError:
 _RESOLVE_WORKERS = 20
 
 
-class DeviceDetailsWindow(QMainWindow):
+class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-attributes
     """Window showing detailed information about a device, with MITM controls."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         ip_address,
         mac_address,
@@ -260,7 +260,8 @@ class DeviceDetailsWindow(QMainWindow):
             wrpcap(path, self._captured_packets)
             print(f"[MITM] Saved {len(self._captured_packets)} packets to {path}")
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # pylint: disable=invalid-name
+        """Stop MITM thread when window closes."""
         if self._mitm and self._mitm.isRunning():
             self._mitm.stop()
             # Don't wait — let the thread finish in the background and clean up
@@ -302,6 +303,7 @@ class DeviceDiscoveryDialog(QDialog):  # pylint: disable=too-many-instance-attri
         self.scanner_timer = None
         self.device_info = {}
         self.arp_scanner_thread = None
+        self.device_details_window = None
 
         self._load_known_devices()
 
@@ -402,22 +404,24 @@ class DeviceDiscoveryDialog(QDialog):  # pylint: disable=too-many-instance-attri
         self.arp_scanner_thread.finished.connect(self.handle_scan_results)
         self.arp_scanner_thread.progressChanged.connect(self.update_progress)
         self.arp_scanner_thread.start()
-        print(
-            f"Started ARP scan — timeout: {self.timeout}ms, target: {self.target_cidr or 'local network'}"
-        )
+        target = self.target_cidr or 'local network'
+        print(f"Started ARP scan — timeout: {self.timeout}ms, target: {target}")
 
     @Slot(int)
     def update_progress(self, progress):
+        """Update the progress bar value."""
         self.progress_bar.setValue(progress)
 
     @Slot(list)
     def handle_partial_results(self, partial_results):
+        """Handle partial scan results as they arrive."""
         for ip_address, mac, hostname, device_vendor, _ in partial_results:
             status = self._upsert_and_tag(ip_address, mac, hostname, device_vendor)
             self.add_device_to_list(ip_address, mac, hostname, device_vendor, status)
 
     @Slot(list)
     def handle_scan_results(self, results):
+        """Handle the final list of scan results."""
         self._last_results = results
         for ip_address, mac, hostname, device_vendor, packet in results:
             status = self._upsert_and_tag(ip_address, mac, hostname, device_vendor)
@@ -462,6 +466,7 @@ class DeviceDiscoveryDialog(QDialog):  # pylint: disable=too-many-instance-attri
             item.setForeground(QColor(Qt.white))
 
     def add_packet_if_new(self, packet_label):
+        """Add a packet summary to the responses list if not already present."""
         if not self._ui.responses.findItems(packet_label, Qt.MatchExactly):
             item = QListWidgetItem(packet_label)
             item.setBackground(QColor(Qt.black))
@@ -474,6 +479,7 @@ class DeviceDiscoveryDialog(QDialog):  # pylint: disable=too-many-instance-attri
 
     @Slot(QListWidgetItem)
     def open_device_details(self, item):
+        """Open the DeviceDetailsWindow for the clicked list item."""
         self.device_info = self._parse_device_details(item.text())
         if self.device_info:
             ip = self.device_info["ip_address"]
@@ -482,7 +488,7 @@ class DeviceDiscoveryDialog(QDialog):  # pylint: disable=too-many-instance-attri
             known = next((d for d in db.get_all_devices() if d["ip_address"] == ip), {})
             gateway_ip = netifaces.gateways()["default"][netifaces.AF_INET][0]
             self.device_details_window = (
-                DeviceDetailsWindow(  # pylint: disable=attribute-defined-outside-init
+                DeviceDetailsWindow(
                     ip,
                     self.device_info["mac"],
                     self.device_info["hostname"],
@@ -560,10 +566,12 @@ class DeviceDiscoveryDialog(QDialog):  # pylint: disable=too-many-instance-attri
     # ------------------------------------------------------------------
 
     def quit_application(self):
+        """Disable the quit button and shut down the application."""
         self._ui.quit.setEnabled(False)
         self._shutdown()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # pylint: disable=invalid-name
+        """Shut down scanner thread when dialog closes."""
         self._shutdown()
         super().closeEvent(event)
 
@@ -598,6 +606,7 @@ class ARPScannerThread(QThread):  # pylint: disable=too-few-public-methods
         self.use_native = self.is_macos and NATIVE_ARP_AVAILABLE
 
     def run(self):
+        """Determine the target network and start the ARP scan."""
         src_ip = get_if_addr(self.interface)
 
         if self.target_cidr:

@@ -8,7 +8,7 @@ Detects:
 """
 
 import netifaces
-from PySide6.QtCore import QObject, QThread, Signal  # pylint: disable=E0611
+from PySide6.QtCore import QThread, Signal  # pylint: disable=E0611
 from scapy.all import ARP, sniff  # pylint: disable=E0611
 
 
@@ -40,6 +40,7 @@ class SpoofDetector(QThread):
     # ------------------------------------------------------------------
 
     def stop(self):
+        """Signal the detector thread to stop sniffing."""
         self._running = False
 
     def seed_known_devices(self, devices: list[tuple[str, str]]):
@@ -52,6 +53,7 @@ class SpoofDetector(QThread):
     # ------------------------------------------------------------------
 
     def run(self):
+        """Sniff ARP packets and check for spoofing indicators."""
         self._running = True
         sniff(
             iface=self.interface,
