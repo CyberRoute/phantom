@@ -13,7 +13,7 @@ PySide6_Addons==6.8.2.1
 PySide6_Essentials==6.8.2.1
 requests==2.33.0
 scapy==2.6.1
-setuptools==76.0.0
+setuptools==78.1.1
 shiboken6==6.8.2.1
 tomlkit==0.13.2
 urllib3==2.6.3
