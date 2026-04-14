@@ -8,7 +8,7 @@
 
 ## Overview
 
-Phantom is a **network reconnaissance and security auditing tool** designed for directly connected networks. It discovers devices via ARP scanning, tracks their history, detects ARP spoofing attacks, and can perform MITM interception with live packet analysis powered by a local LLM.
+Phantom is a **network reconnaissance and security auditing tool** designed for directly connected networks. It discovers devices via ARP scanning, tracks their history, detects ARP spoofing attacks, and can perform MITM interception with live packet analysis powered by a local or cloud LLM.
 
 The GUI is built with **PySide6** (Qt framework) and uses **Scapy** for all packet-level operations.
 
@@ -21,7 +21,7 @@ The GUI is built with **PySide6** (Qt framework) and uses **Scapy** for all pack
 - **New Device & MAC Change Detection**: Highlights new devices (green) and IP-to-MAC binding changes (red) — a classic ARP spoofing indicator.
 - **ARP Spoof Detection**: Passive background sniffer that alerts on conflicting ARP bindings and gateway MAC changes.
 - **MITM Interception**: ARP-spoof a target to intercept its traffic; captured packets are displayed in real time with a full layer-by-layer breakdown.
-- **LLM Packet Analysis**: Send any captured packet to a local [Ollama](https://ollama.com) instance for AI-assisted analysis (protocol identification, risk assessment, credential spotting).
+- **LLM Packet Analysis**: Send any captured packet to a local [Ollama](https://ollama.com) instance or the [Anthropic API](https://www.anthropic.com) for AI-assisted analysis (protocol identification, risk assessment, credential spotting).
 - **PCAP Export**: Save captured packets from a MITM session as a `.pcap` file for offline analysis in Wireshark.
 - **Scan Export**: Export scan results to JSON or CSV.
 - **Progress Bar**: Live progress feedback during scanning.
@@ -38,7 +38,9 @@ The GUI is built with **PySide6** (Qt framework) and uses **Scapy** for all pack
 - **PySide6** — graphical user interface
 - **netifaces** — network interface introspection
 - **requests** — Ollama API streaming
+- **anthropic** — Anthropic API client (installed via `requirements.txt`)
 - **Ollama** (optional) — local LLM for packet analysis (`ollama serve`)
+- **Anthropic API key** (optional) — set via `ANTHROPIC_API_KEY` env var or entered in the UI
 
 ---
 
@@ -132,18 +134,35 @@ Click **Save PCAP** to write the captured session to a `.pcap` file.
 
 > **Note:** MITM requires root/sudo. IP forwarding is restored automatically when MITM is stopped.
 
-### 4. LLM packet analysis (Ollama)
+### 4. LLM packet analysis
 
-With [Ollama](https://ollama.com) running locally (`ollama serve`) and at least one model pulled:
+Select a captured packet in the MITM window, then choose a **Provider**:
 
-1. Select a captured packet in the MITM window.
-2. Choose a model from the **Model** drop-down (populated automatically from the running Ollama instance). Click **↻** to refresh the list after pulling a new model.
+#### Ollama (local)
+
+Requires [Ollama](https://ollama.com) running locally (`ollama serve`) with at least one model pulled.
+
+1. Set **Provider** to **Ollama (local)**.
+2. Choose a model from the **Model** drop-down (populated automatically). Click **↻** to refresh after pulling a new model.
 3. Optionally add context in the **Context** field (e.g. `"this is a smart TV"`).
-4. Click **Analyse with LLM** — the analysis opens in a dedicated window and streams in token by token. Use **Copy analysis** to copy the result to the clipboard.
+4. Click **Analyse with LLM**.
 
-The LLM identifies protocol/service, describes what the endpoints are doing, flags security-relevant observations, and provides a risk rating.
+> **Tip:** Any model available via `ollama list` can be used. Smaller models respond faster; larger ones give more detailed analysis.
 
-> **Tip:** Any model available via `ollama list` can be used. Smaller models (e.g. `llama3.2:1b`) respond faster; larger ones (e.g. `llama3.1:8b`) give more detailed analysis.
+#### Anthropic API (cloud)
+
+Requires an [Anthropic API key](https://console.anthropic.com).
+
+1. Set **Provider** to **Anthropic**.
+2. Choose a model (`claude-opus-4-6`, `claude-sonnet-4-6`, or `claude-haiku-4-5`).
+3. Enter your API key in the **API key** field (or set `ANTHROPIC_API_KEY` in the environment and it will pre-fill automatically).
+4. Optionally add context, then click **Analyse with LLM**.
+
+> **Tip:** `claude-haiku-4-5` is fastest and cheapest for quick checks; `claude-opus-4-6` gives the most thorough analysis.
+
+The analysis opens in a dedicated window and streams token by token. Use **Copy analysis** to copy the result to the clipboard.
+
+The LLM identifies protocol/service, flags security-relevant observations (plaintext credentials, CVE patterns, suspicious beaconing), and provides a risk rating.
 
 ---
 
@@ -156,7 +175,7 @@ core/
   arp_spoofer.py         — low-level ARP spoof / restore primitives
   mitm.py                — MitmThread (spoof loop + sniffer), IP forwarding management
   spoof_detector.py      — passive ARP sniff-based spoof detection
-  ollama_analyst.py      — OllamaThread for streaming LLM packet analysis
+  llm_analyst.py         — OllamaThread and AnthropicThread for streaming LLM packet analysis
   db.py                  — SQLite persistence (device history, MAC audit trail)
   networking.py          — CIDR calculation, hostname resolution helpers
   vendor.py              — OUI/MAC vendor lookup
