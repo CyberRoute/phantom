@@ -1,11 +1,18 @@
 """
-Ollama integration — streams LLM analysis of a captured packet.
+LLM integration — streams packet analysis via Ollama or the Anthropic API.
 """
 
 import json
+import os
 
 import requests
 from PySide6.QtCore import QThread, Signal  # pylint: disable=E0611
+
+ANTHROPIC_MODELS = [
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5",
+]
 
 OLLAMA_BASE = "http://localhost:11434"
 OLLAMA_URL = f"{OLLAMA_BASE}/api/generate"
@@ -101,6 +108,91 @@ class OllamaThread(QThread):
                 f"Ollama timed out — model '{self.model}' is too slow or not loaded. "
                 "Try: ollama pull " + self.model
             )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
+
+
+class AnthropicThread(QThread):
+    """Streams packet analysis via the Anthropic API. Emits token by token."""
+
+    token = Signal(str)
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(
+        self,
+        packet_text: str,
+        model: str,
+        api_key: str = "",
+        user_context: str = "",
+        device_vendor: str = "",
+        hostname: str = "",
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.packet_text = packet_text
+        self.model = model
+        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self.user_context = user_context
+        self.device_vendor = device_vendor
+        self.hostname = hostname
+
+    def run(self):
+        """Stream analysis from the Anthropic API to the token signal."""
+        try:
+            import anthropic  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            self.error.emit(
+                "anthropic package not installed — run: pip install anthropic"
+            )
+            self.finished.emit()
+            return
+
+        if not self.api_key:
+            self.error.emit(
+                "No Anthropic API key — set ANTHROPIC_API_KEY or enter it in the UI."
+            )
+            self.finished.emit()
+            return
+
+        device_section = ""
+        if self.device_vendor or self.hostname:
+            device_section = "\nDevice under analysis:"
+            if self.hostname:
+                device_section += f"\n  Hostname : {self.hostname}"
+            if self.device_vendor:
+                device_section += f"\n  Vendor   : {self.device_vendor}"
+            device_section += "\n"
+
+        context_section = (
+            f"\nAdditional context from analyst:\n{self.user_context}\n"
+            if self.user_context
+            else ""
+        )
+        user_message = (
+            f"{device_section}{context_section}\nPacket:\n{self.packet_text}"
+        )
+
+        try:
+            client = anthropic.Anthropic(api_key=self.api_key)
+            with client.messages.stream(
+                model=self.model,
+                max_tokens=4096,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_message}],
+            ) as stream:
+                for text in stream.text_stream:
+                    self.token.emit(text)
+        except anthropic.AuthenticationError:
+            self.error.emit("Invalid Anthropic API key.")
+        except anthropic.RateLimitError:
+            self.error.emit("Anthropic rate limit reached — try again shortly.")
+        except anthropic.APIConnectionError:
+            self.error.emit("Cannot reach Anthropic API — check your network.")
+        except anthropic.APIStatusError as e:
+            self.error.emit(f"Anthropic API error {e.status_code}: {e.message}")
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.error.emit(str(e))
         finally:

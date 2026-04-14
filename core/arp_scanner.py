@@ -22,7 +22,9 @@ from core import db
 import core.networking as net
 from core import vendor
 from core.mitm import MitmThread
-from core.ollama_analyst import OllamaThread, fetch_ollama_models
+from core.llm_analyst import (  # pylint: disable=E0611
+    ANTHROPIC_MODELS, AnthropicThread, OllamaThread, fetch_ollama_models
+)
 from core.platform import get_os
 from ui.ui_arpscan import Ui_DeviceDiscovery
 
@@ -191,7 +193,7 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         self.setCentralWidget(central_widget)
         self.resize(680, 850)
 
-        self._load_ollama_models()
+        self._on_provider_changed()
 
     @Slot(bool)
     def _toggle_mitm(self, checked):
@@ -247,8 +249,17 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         )
         self._user_context.returnPressed.connect(self._analyse_packet)
 
+        # Provider selector
+        self._provider_combo = QComboBox()
+        self._provider_combo.addItems(["Ollama (local)", "Anthropic"])
+        self._provider_combo.currentIndexChanged.connect(self._on_provider_changed)
+        provider_row = QHBoxLayout()
+        provider_row.addWidget(QLabel("Provider:"))
+        provider_row.addWidget(self._provider_combo, stretch=1)
+
+        # Model selector — contents change with provider
         self._model_combo = QComboBox()
-        self._model_combo.setPlaceholderText("Select Ollama model…")
+        self._model_combo.setPlaceholderText("Select model…")
         self._refresh_models_button = QPushButton("↻")
         self._refresh_models_button.setFixedWidth(28)
         self._refresh_models_button.setToolTip("Refresh available Ollama models")
@@ -258,12 +269,36 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         model_row.addWidget(self._model_combo, stretch=1)
         model_row.addWidget(self._refresh_models_button)
 
+        # Anthropic API key field (hidden when Ollama is selected)
+        import os as _os  # pylint: disable=import-outside-toplevel
+        self._api_key_edit = QLineEdit()
+        self._api_key_edit.setPlaceholderText(
+            "Anthropic API key (or set ANTHROPIC_API_KEY env var)"
+        )
+        self._api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self._api_key_edit.setText(_os.environ.get("ANTHROPIC_API_KEY", ""))
+        self._api_key_edit.setVisible(False)
+
         layout.addWidget(QLabel("Captured packets:"))
         layout.addWidget(pkt_splitter)
         layout.addWidget(QLabel("Context:"))
         layout.addWidget(self._user_context)
+        layout.addLayout(provider_row)
         layout.addLayout(model_row)
+        layout.addWidget(self._api_key_edit)
         layout.addWidget(self._analyse_button)
+
+    def _on_provider_changed(self):
+        """Switch model list and API key visibility when the provider changes."""
+        is_anthropic = self._provider_combo.currentText() == "Anthropic"
+        self._api_key_edit.setVisible(is_anthropic)
+        self._refresh_models_button.setVisible(not is_anthropic)
+        self._model_combo.clear()
+        if is_anthropic:
+            self._model_combo.addItems(ANTHROPIC_MODELS)
+            self._model_combo.setEnabled(True)
+        else:
+            self._load_ollama_models()
 
     def _load_ollama_models(self):
         """Populate the model combo box with models available on the local Ollama server."""
@@ -314,24 +349,35 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
 
         model = self._model_combo.currentText()
         if not model:
-            QMessageBox.warning(self, "No model", "No Ollama model selected — click ↻ to refresh.")
+            QMessageBox.warning(self, "No model", "No model selected.")
             return
 
         pkt = self._captured_packets[row]
         pkt_text = _format_packet(pkt)
         user_context = self._user_context.text().strip()
+        is_anthropic = self._provider_combo.currentText() == "Anthropic"
 
         self._llm_window = LlmAnalysisWindow(pkt.summary(), pkt_text, parent=self)
         self._llm_window.set_analysing()
         self._llm_window.show()
 
-        self._ollama_thread = OllamaThread(
-            pkt_text,
-            model,
-            user_context=user_context,
-            device_vendor=self._device_vendor,
-            hostname=self._hostname,
-        )
+        if is_anthropic:
+            self._ollama_thread = AnthropicThread(
+                pkt_text,
+                model,
+                api_key=self._api_key_edit.text().strip(),
+                user_context=user_context,
+                device_vendor=self._device_vendor,
+                hostname=self._hostname,
+            )
+        else:
+            self._ollama_thread = OllamaThread(
+                pkt_text,
+                model,
+                user_context=user_context,
+                device_vendor=self._device_vendor,
+                hostname=self._hostname,
+            )
         self._ollama_thread.token.connect(self._on_llm_token)
         self._ollama_thread.error.connect(self._on_llm_error)
         self._ollama_thread.finished.connect(self._on_llm_finished)
