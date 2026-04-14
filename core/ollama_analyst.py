@@ -7,8 +7,18 @@ import json
 import requests
 from PySide6.QtCore import QThread, Signal  # pylint: disable=E0611
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-DEFAULT_MODEL = "llama3.2:1b"
+OLLAMA_BASE = "http://localhost:11434"
+OLLAMA_URL = f"{OLLAMA_BASE}/api/generate"
+
+
+def fetch_ollama_models() -> list[str]:
+    """Return the list of model names available on the local Ollama server."""
+    try:
+        resp = requests.get(f"{OLLAMA_BASE}/api/tags", timeout=3)
+        resp.raise_for_status()
+        return [m["name"] for m in resp.json().get("models", [])]
+    except Exception:  # pylint: disable=broad-exception-caught
+        return []
 
 SYSTEM_PROMPT = """You are an IoT security researcher specialising in vulnerability discovery
 on embedded and smart devices.
@@ -34,10 +44,10 @@ class OllamaThread(QThread):
     def __init__(
         self,
         packet_text: str,
+        model: str,
         user_context: str = "",
         device_vendor: str = "",
         hostname: str = "",
-        model: str = DEFAULT_MODEL,
         parent=None,
     ):
         super().__init__(parent)
