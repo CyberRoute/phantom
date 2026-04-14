@@ -27,7 +27,7 @@ The GUI is built with **PySide6** (Qt framework) and uses **Scapy** for all pack
 - **Progress Bar**: Live progress feedback during scanning.
 - **Custom CIDR Target**: Scan a specific subnet instead of the local interface network.
 - **Multithreading**: All network operations run in `QThread` workers — the UI stays responsive throughout.
-- **C Extension (macOS)**: A native C extension provides accurate, sequential ARP scanning on macOS where Scapy bulk-send is unreliable.
+- **C Extension (macOS)**: A native C extension provides accurate, parallel ARP scanning on macOS where Scapy bulk-send is unreliable.
 
 ---
 
@@ -134,13 +134,16 @@ Click **Save PCAP** to write the captured session to a `.pcap` file.
 
 ### 4. LLM packet analysis (Ollama)
 
-With [Ollama](https://ollama.com) running locally (`ollama serve`) and a model pulled (default: `deepseek-r1:1.5b`):
+With [Ollama](https://ollama.com) running locally (`ollama serve`) and at least one model pulled:
 
 1. Select a captured packet in the MITM window.
-2. Optionally add context in the **Context** field (e.g. `"this is a smart TV"`).
-3. Click **Analyse with LLM** — the analysis streams in token by token.
+2. Choose a model from the **Model** drop-down (populated automatically from the running Ollama instance). Click **↻** to refresh the list after pulling a new model.
+3. Optionally add context in the **Context** field (e.g. `"this is a smart TV"`).
+4. Click **Analyse with LLM** — the analysis opens in a dedicated window and streams in token by token. Use **Copy analysis** to copy the result to the clipboard.
 
 The LLM identifies protocol/service, describes what the endpoints are doing, flags security-relevant observations, and provides a risk rating.
+
+> **Tip:** Any model available via `ollama list` can be used. Smaller models (e.g. `llama3.2:1b`) respond faster; larger ones (e.g. `llama3.1:8b`) give more detailed analysis.
 
 ---
 
