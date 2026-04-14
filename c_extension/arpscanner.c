@@ -51,7 +51,7 @@ typedef struct {
     arp_response_t *response;
     struct in_addr target_ip;
     int timeout_ms;
-    int finished;
+    volatile int finished;
 } capture_thread_args_t;
 
 /* 
@@ -144,7 +144,7 @@ static PyObject *perform_arp_scan(PyObject *self, PyObject *args) {
 
     // Open pcap handle
     char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_t *handle = pcap_open_live(iface, 65536, 1, timeout_ms, errbuf);
+    pcap_t *handle = pcap_open_live(iface, 65536, 1, 10, errbuf);
     if (!handle) {
         PyErr_SetString(PyExc_RuntimeError, errbuf);
         return NULL;
@@ -154,7 +154,7 @@ static PyObject *perform_arp_scan(PyObject *self, PyObject *args) {
     struct bpf_program fp;
     char filter_exp[64];
     snprintf(filter_exp, sizeof(filter_exp), "arp src host %s", dst_ip_str);
-    if (pcap_compile(handle, &fp, filter_exp, 0, PCAP_NETMASK_UNKNOWN) == -1) {
+    if (pcap_compile(handle, &fp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
         pcap_close(handle);
         PyErr_SetString(PyExc_RuntimeError, "Failed to compile filter");
         return NULL;
@@ -207,24 +207,33 @@ static PyObject *perform_arp_scan(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    // Send ARP request
-    if (pcap_sendpacket(handle, packet, sizeof(packet)) != 0) {
-        pthread_cancel(tid);
-        pcap_close(handle);
-        PyErr_SetString(PyExc_RuntimeError, "Failed to send ARP packet");
-        return NULL;
-    }
+    // Release the GIL for the blocking network operations so other Python
+    // threads (e.g. the ThreadPoolExecutor workers) can run concurrently.
+    int send_failed;
+    Py_BEGIN_ALLOW_THREADS
 
-    // Wait for response or timeout
-    while (!thread_args.finished && timeout_ms > 0) {
-        usleep(10000); // Sleep for 10ms
-        timeout_ms -= 10;
+    // Send ARP request
+    send_failed = (pcap_sendpacket(handle, packet, sizeof(packet)) != 0);
+
+    if (!send_failed) {
+        // Wait for response or timeout
+        while (!thread_args.finished && timeout_ms > 0) {
+            usleep(10000); // Sleep for 10ms
+            timeout_ms -= 10;
+        }
     }
 
     // Clean up
     pthread_cancel(tid);
     pthread_join(tid, NULL);
     pcap_close(handle);
+
+    Py_END_ALLOW_THREADS
+
+    if (send_failed) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to send ARP packet");
+        return NULL;
+    }
 
     // Return results
     if (response.found) {

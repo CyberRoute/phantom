@@ -282,11 +282,15 @@ class _SnifferThread(QThread):
         """Sniff packets from/to the target IP until stopped."""
         self._running = True
         bpf = f"host {self.target_ip} and not arp"
+
+        def _emit(pkt):
+            self.packetCaptured.emit(pkt)
+
         while self._running:
             sniff(
                 iface=self.interface,
                 filter=bpf,
-                prn=self.packetCaptured.emit,
+                prn=_emit,
                 stop_filter=lambda _: not self._running,
                 store=False,
                 timeout=1,

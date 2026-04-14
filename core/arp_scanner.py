@@ -11,18 +11,18 @@ from datetime import datetime
 import netifaces
 from PySide6.QtCore import Qt, QThread, Signal, Slot  # pylint: disable=E0611
 from PySide6.QtGui import QColor, QFont, QIcon  # pylint: disable=E0611
-from PySide6.QtWidgets import (QDialog, QFileDialog,  # pylint: disable=E0611
-                               QLabel, QLineEdit, QListWidget, QListWidgetItem,
-                               QMainWindow, QMessageBox, QProgressBar,
-                               QPushButton, QSplitter, QTextEdit, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QDialog,  # pylint: disable=E0611
+                               QFileDialog, QHBoxLayout, QLabel, QLineEdit,
+                               QListWidget, QListWidgetItem, QMainWindow,
+                               QMessageBox, QProgressBar, QPushButton,
+                               QSplitter, QTextEdit, QVBoxLayout, QWidget)
 from scapy.all import ARP, Ether, get_if_addr, srp  # pylint: disable=E0611
 
 from core import db
 import core.networking as net
 from core import vendor
 from core.mitm import MitmThread
-from core.ollama_analyst import OllamaThread
+from core.ollama_analyst import OllamaThread, fetch_ollama_models
 from core.platform import get_os
 from ui.ui_arpscan import Ui_DeviceDiscovery
 
@@ -35,6 +35,82 @@ except ImportError:
 
 # Parallelism: number of workers for concurrent host resolution
 _RESOLVE_WORKERS = 20
+
+
+class LlmAnalysisWindow(QMainWindow):
+    """Standalone window that streams LLM analysis of a captured packet."""
+
+    def __init__(self, packet_summary: str, packet_text: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"LLM Analysis — {packet_summary}")
+        self.resize(780, 600)
+
+        mono = QFont()
+        mono.setStyleHint(QFont.StyleHint.Monospace)
+        mono.setPointSize(10)
+
+        # Packet detail (collapsed by default via a small fixed height)
+        self._packet_detail = QTextEdit()
+        self._packet_detail.setReadOnly(True)
+        self._packet_detail.setFont(mono)
+        self._packet_detail.setStyleSheet("background:#111; color:#aaa;")
+        self._packet_detail.setPlainText(packet_text)
+        self._packet_detail.setMaximumHeight(120)
+
+        # LLM output
+        self._output = QTextEdit()
+        self._output.setReadOnly(True)
+        self._output.setFont(mono)
+        self._output.setStyleSheet("background:black; color:white;")
+        self._output.setPlaceholderText("Waiting for analysis…")
+
+        splitter = QSplitter(Qt.Vertical)
+        splitter.addWidget(self._packet_detail)
+        splitter.addWidget(self._output)
+        splitter.setSizes([100, 480])
+
+        self._copy_button = QPushButton("Copy analysis")
+        self._copy_button.clicked.connect(self._copy_to_clipboard)
+        self._copy_button.setEnabled(False)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(self._copy_button)
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Packet:"))
+        layout.addWidget(splitter)
+        layout.addLayout(btn_row)
+
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
+
+    def append_token(self, token: str):
+        """Append a streamed token to the output, clearing the placeholder on first call."""
+        if self._output.toPlainText() == "Analysing…":
+            self._output.clear()
+        cursor = self._output.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        cursor.insertText(token)
+        self._output.setTextCursor(cursor)
+        self._output.ensureCursorVisible()
+
+    def set_analysing(self):
+        """Reset the output area to the 'analysing' placeholder state."""
+        self._output.setPlainText("Analysing…")
+        self._copy_button.setEnabled(False)
+
+    def set_error(self, msg: str):
+        """Display an error message in the output area."""
+        self._output.setPlainText(f"Error: {msg}")
+
+    def set_done(self):
+        """Mark analysis as complete and enable the copy button."""
+        self._copy_button.setEnabled(True)
+
+    def _copy_to_clipboard(self):
+        QApplication.clipboard().setText(self._output.toPlainText())
 
 
 class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-attributes
@@ -104,58 +180,18 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         self._save_pcap_button.setEnabled(False)
         layout.addWidget(self._save_pcap_button)
 
-        mono = QFont("Monospace")
-        mono.setPointSize(9)
-
-        self._packet_list = QListWidget()
-        self._packet_list.setFont(mono)
-        self._packet_list.currentRowChanged.connect(self._on_packet_selected)
-
-        self._packet_detail = QTextEdit()
-        self._packet_detail.setReadOnly(True)
-        self._packet_detail.setFont(mono)
-        self._packet_detail.setStyleSheet("background:black; color:white;")
-        self._packet_detail.setPlaceholderText("Select a packet to inspect it...")
-
-        # Analyse button + LLM output
-        self._analyse_button = QPushButton("Analyse with LLM")
-        self._analyse_button.setEnabled(False)
-        self._analyse_button.clicked.connect(self._analyse_packet)
-
-        self._llm_output = QTextEdit()
-        self._llm_output.setReadOnly(True)
-        self._llm_output.setFont(mono)
-        self._llm_output.setStyleSheet("background:black; color:white;")
-        self._llm_output.setPlaceholderText("LLM analysis will appear here...")
-        self._llm_output.setMaximumHeight(180)
-
-        # Stack: packet list | packet detail | [analyse btn + llm output]
-        pkt_splitter = QSplitter(Qt.Vertical)
-        pkt_splitter.addWidget(self._packet_list)
-        pkt_splitter.addWidget(self._packet_detail)
-        pkt_splitter.setSizes([180, 180])
-
-        self._user_context = QLineEdit()
-        self._user_context.setPlaceholderText(
-            "Optional context for the LLM (e.g. 'this is a smart TV', 'focus on credentials')..."
-        )
-        self._user_context.returnPressed.connect(self._analyse_packet)
-
-        layout.addWidget(QLabel("Captured packets:"))
-        layout.addWidget(pkt_splitter)
-        layout.addWidget(QLabel("Context:"))
-        layout.addWidget(self._user_context)
-        layout.addWidget(self._analyse_button)
-        layout.addWidget(QLabel("LLM analysis:"))
-        layout.addWidget(self._llm_output)
+        self._build_packet_panel(layout)
 
         self._captured_packets = []  # newest first, mirrors list order
         self._ollama_thread: OllamaThread | None = None
+        self._llm_window: LlmAnalysisWindow | None = None
 
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
         self.resize(680, 850)
+
+        self._load_ollama_models()
 
     @Slot(bool)
     def _toggle_mitm(self, checked):
@@ -179,6 +215,67 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         self._mitm_button.setChecked(False)
         self._mitm_button.setEnabled(True)
         self._status_label.setStyleSheet("color: grey")
+
+    def _build_packet_panel(self, layout: QVBoxLayout):
+        """Build the packet list/detail/LLM controls and add them to *layout*."""
+        mono = QFont()
+        mono.setStyleHint(QFont.StyleHint.Monospace)
+        mono.setPointSize(9)
+
+        self._packet_list = QListWidget()
+        self._packet_list.setFont(mono)
+        self._packet_list.currentRowChanged.connect(self._on_packet_selected)
+
+        self._packet_detail = QTextEdit()
+        self._packet_detail.setReadOnly(True)
+        self._packet_detail.setFont(mono)
+        self._packet_detail.setStyleSheet("background:black; color:white;")
+        self._packet_detail.setPlaceholderText("Select a packet to inspect it...")
+
+        self._analyse_button = QPushButton("Analyse with LLM")
+        self._analyse_button.setEnabled(False)
+        self._analyse_button.clicked.connect(self._analyse_packet)
+
+        pkt_splitter = QSplitter(Qt.Vertical)
+        pkt_splitter.addWidget(self._packet_list)
+        pkt_splitter.addWidget(self._packet_detail)
+        pkt_splitter.setSizes([180, 180])
+
+        self._user_context = QLineEdit()
+        self._user_context.setPlaceholderText(
+            "Optional context for the LLM (e.g. 'this is a smart TV', 'focus on credentials')..."
+        )
+        self._user_context.returnPressed.connect(self._analyse_packet)
+
+        self._model_combo = QComboBox()
+        self._model_combo.setPlaceholderText("Select Ollama model…")
+        self._refresh_models_button = QPushButton("↻")
+        self._refresh_models_button.setFixedWidth(28)
+        self._refresh_models_button.setToolTip("Refresh available Ollama models")
+        self._refresh_models_button.clicked.connect(self._load_ollama_models)
+        model_row = QHBoxLayout()
+        model_row.addWidget(QLabel("Model:"))
+        model_row.addWidget(self._model_combo, stretch=1)
+        model_row.addWidget(self._refresh_models_button)
+
+        layout.addWidget(QLabel("Captured packets:"))
+        layout.addWidget(pkt_splitter)
+        layout.addWidget(QLabel("Context:"))
+        layout.addWidget(self._user_context)
+        layout.addLayout(model_row)
+        layout.addWidget(self._analyse_button)
+
+    def _load_ollama_models(self):
+        """Populate the model combo box with models available on the local Ollama server."""
+        models = fetch_ollama_models()
+        self._model_combo.clear()
+        if models:
+            self._model_combo.addItems(models)
+            self._model_combo.setCurrentIndex(0)
+            self._model_combo.setEnabled(True)
+        else:
+            self._model_combo.setPlaceholderText("Ollama not running or no models pulled")
+            self._model_combo.setEnabled(False)
 
     @Slot(str)
     def _on_status(self, msg):
@@ -204,7 +301,6 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         pkt = self._captured_packets[row]
         self._packet_detail.setPlainText(_format_packet(pkt))
         self._analyse_button.setEnabled(True)
-        self._llm_output.clear()
 
     @Slot()
     def _analyse_packet(self):
@@ -216,10 +312,22 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         if self._ollama_thread and self._ollama_thread.isRunning():
             self._ollama_thread.terminate()
 
-        pkt_text = _format_packet(self._captured_packets[row])
+        model = self._model_combo.currentText()
+        if not model:
+            QMessageBox.warning(self, "No model", "No Ollama model selected — click ↻ to refresh.")
+            return
+
+        pkt = self._captured_packets[row]
+        pkt_text = _format_packet(pkt)
         user_context = self._user_context.text().strip()
+
+        self._llm_window = LlmAnalysisWindow(pkt.summary(), pkt_text, parent=self)
+        self._llm_window.set_analysing()
+        self._llm_window.show()
+
         self._ollama_thread = OllamaThread(
             pkt_text,
+            model,
             user_context=user_context,
             device_vendor=self._device_vendor,
             hostname=self._hostname,
@@ -230,26 +338,22 @@ class DeviceDetailsWindow(QMainWindow):  # pylint: disable=too-many-instance-att
         self._ollama_thread.start()
 
         self._analyse_button.setEnabled(False)
-        self._llm_output.setPlainText("Analysing...")
 
     @Slot(str)
     def _on_llm_token(self, token):
-        cursor = self._llm_output.textCursor()
-        cursor.movePosition(cursor.MoveOperation.End)
-        # Clear placeholder on first real token
-        if self._llm_output.toPlainText() == "Analysing...":
-            self._llm_output.clear()
-        cursor.insertText(token)
-        self._llm_output.setTextCursor(cursor)
-        self._llm_output.ensureCursorVisible()
+        if self._llm_window:
+            self._llm_window.append_token(token)
 
     @Slot(str)
     def _on_llm_error(self, msg):
-        self._llm_output.setPlainText(f"Error: {msg}")
+        if self._llm_window:
+            self._llm_window.set_error(msg)
 
     @Slot()
     def _on_llm_finished(self):
         self._analyse_button.setEnabled(True)
+        if self._llm_window:
+            self._llm_window.set_done()
 
     @Slot()
     def _save_pcap(self):
@@ -586,8 +690,6 @@ class DeviceDiscoveryDialog(QDialog):  # pylint: disable=too-many-instance-attri
         if self.arp_scanner_thread is not None and self.arp_scanner_thread.isRunning():
             self.arp_scanner_thread.quit()
             self.arp_scanner_thread.wait()
-        from PySide6.QtWidgets import QApplication  # pylint: disable=E0611
-
         QApplication.quit()
 
 
@@ -615,6 +717,12 @@ class ARPScannerThread(QThread):  # pylint: disable=too-few-public-methods
     def run(self):
         """Determine the target network and start the ARP scan."""
         src_ip = get_if_addr(self.interface)
+        print(f"[scan] interface={self.interface!r}  src_ip={src_ip}  use_native={self.use_native}")
+
+        if src_ip == "0.0.0.0":
+            print(f"[scan] ERROR: could not get a valid IP for interface {self.interface!r}")
+            self.finished.emit([])
+            return
 
         if self.target_cidr:
             try:
@@ -640,7 +748,10 @@ class ARPScannerThread(QThread):  # pylint: disable=too-few-public-methods
     def _scan_network(self, src_ip, network):
         hosts = [str(ip) for ip in network.hosts() if str(ip) != src_ip]
         if self.use_native:
-            print("Using native ARP scanner")
+            print(
+                f"[scan] native ARP scanner — {len(hosts)} hosts"
+                f"  timeout={self.timeout}s  workers={_RESOLVE_WORKERS}"
+            )
             return self._run_native_scan(src_ip, hosts)
         print(f"Using Scapy ARP scanner — {len(hosts)} hosts")
         return self._run_scapy_scan(hosts)
@@ -650,29 +761,37 @@ class ARPScannerThread(QThread):  # pylint: disable=too-few-public-methods
     # ------------------------------------------------------------------
 
     def _run_native_scan(self, src_ip, hosts):
-        """Scan hosts sequentially using the native C arpscanner extension."""
-        arp_results = []
+        """Scan hosts in parallel using the native C arpscanner extension."""
         total = len(hosts)
-        for count, ip in enumerate(hosts, start=1):
+        completed = 0
+        arp_results = []
+        timeout_ms = int(self.timeout * 1000)
+
+        def scan_one(ip):
             try:
                 result = arpscanner.perform_arp_scan(
-                    self.interface,
-                    str(src_ip),
-                    str(ip),
-                    int(self.timeout * 1000),
+                    self.interface, str(src_ip), str(ip), timeout_ms
                 )
+                if result:
+                    print(f"[scan] found {ip} -> {result.get('mac')}")
+                return ip, result
             except Exception as e:  # pylint: disable=broad-exception-caught
-                print(f"Error scanning {ip}: {e}")
-                result = None
+                print(f"[scan] error scanning {ip}: {e}")
+                return ip, None
 
-            if result:
-                mac = result["mac"]
-                device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
-                hostname = net.get_hostname(ip)
-                arp_response = _make_arp_response(ip, mac)
-                arp_results.append((ip, mac, hostname, device_vendor, arp_response))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=_RESOLVE_WORKERS) as pool:
+            for ip, result in pool.map(scan_one, hosts):
+                completed += 1
+                if result:
+                    mac = result["mac"]
+                    device_vendor = self.mac_vendor_lookup.lookup_vendor(mac)
+                    hostname = net.get_hostname(ip)
+                    arp_results.append(
+                        (ip, mac, hostname, device_vendor, _make_arp_response(ip, mac))
+                    )
+                    self.partialResults.emit(list(arp_results))
+                self._update_progress(completed, total, arp_results)
 
-            self._update_progress(count, total, arp_results)
         return arp_results
 
     # ------------------------------------------------------------------
